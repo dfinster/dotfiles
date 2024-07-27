@@ -43,7 +43,7 @@ source $ZSH/oh-my-zsh.sh
 ######### User configuration
 #################################
 
-# Interactive Shell Environment Variables
+# Exports
 export LANG=en_US.UTF-8
 export HISTSIZE=10000
 export SAVEHIST=10000
