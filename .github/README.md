@@ -1,6 +1,6 @@
 # dotfiles
 
-This is my version of [`getantidote/zdotdir`](https://github.com/getantidote/zdotdir).
+My customized version of [`getantidote/zdotdir`](https://github.com/getantidote/zdotdir), extended to manage other personal dotfiles in addition to Zsh configuration.
 
 ## Prerequisites
 
