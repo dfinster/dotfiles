@@ -1,0 +1,13 @@
+#!/bin/zsh
+# .zstyles - Set zstyle settings for plugins that need them.
+
+zstyle ':antidote:bundle' use-friendly-names 'yes'  # Use human-readable names for cloned plugins
+zstyle ':omz:plugins:eza' 'header' yes              # Show header row in eza listings
+zstyle ':omz:plugins:eza' 'icons' yes               # Enable file-type icons in eza output
+zstyle ':omz:plugins:eza' 'size-prefix' binary      # Use binary (KiB/MiB) size units in eza
+zstyle ':completion:*' format '%F{green}-- %d --%f' # Color and wrap each completion group header in green
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' # Match letters case-insensitively in completions
+zstyle ':completion:*' group-name ''                # Disable default “group:” labels before items
+zstyle ':completion:*' list-dirs-first true         # List directories before files in completions
+zstyle ':completion:*' menu select=1                # Enter interactive menu after one Tab press
+zstyle ':completion:*' list-colors ''               # Honor LS_COLORS palette in completion lists

@@ -1,0 +1,21 @@
+#!/bin/zsh
+# .zsh_plugins.txt - antidote plugins file
+
+mattmc3/ez-compinit                           # Fast completion system
+zsh-users/zsh-completions kind:fpath path:src # Zsh completions
+ohmyzsh/ohmyzsh path:plugins/vscode           # VS Code integration
+belak/zsh-utils path:editor                   # Keybindings for terminal line editing
+chrissicool/zsh-256color                      # Terminal 256 colors
+romkatv/powerlevel10k                         # Powerlevel10k theme for fancy prompt
+zdharma-continuum/fast-syntax-highlighting    # Syntax highlighting
+zsh-users/zsh-autosuggestions                 # Auto-suggestions
+ohmyzsh/ohmyzsh path:plugins/git              # git
+lukechilds/zsh-nvm                            # nvm
+ohmyzsh/ohmyzsh path:plugins/yarn             # yarn
+ohmyzsh/ohmyzsh path:plugins/iterm2           # iterm2
+ohmyzsh/ohmyzsh path:plugins/eza              # eza
+ohmyzsh/ohmyzsh path:plugins/direnv           # direnv
+atuinsh/atuin                                 # Atuin terminal history
+
+# Local plugin to make VS Code well-behaved as $EDITOR
+file:$ZDOTDIR/plugins/code-wait kind:path     # Helper script for VS Code as $EDITOR

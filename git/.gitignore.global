@@ -1,0 +1,3 @@
+# Ignore files in all repositories
+# macOS system files
+.DS_Store

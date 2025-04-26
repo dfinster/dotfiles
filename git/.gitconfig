@@ -1,0 +1,75 @@
+# Shared Git configuration file
+
+# Include additional local configuration if inside ~/ (personal machine settings)
+[includeIf "gitdir:~/"]
+  path = ~/.gitconfig.local
+
+# Core behavior
+[core]
+  excludesfile = ~/.config/dotfiles/git/.gitignore.global  # Globally ignore these files in all repositories
+  editor = code --wait                                     # Set VS Code as the default Git editor
+
+# GPG/SSH signing configuration
+[gpg]
+  format = ssh                                             # Use SSH keys for commit signing
+
+[commit]
+  gpgsign = true                                           # Always GPG-sign commits
+
+[gpg "ssh"]
+  program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign  # Use 1Password to sign with SSH keys
+  allowedSignersFile = ~/.ssh/allowed_signers                        # Allowed SSH public keys for verification
+
+# Git LFS configuration
+[filter "lfs"]
+  smudge = git-lfs smudge -- %f                            # Replace LFS pointer files with real content at checkout
+  process = git-lfs filter-process                         # Use efficient LFS filter process
+  required = true                                          # Require LFS for proper repo operation
+  clean = git-lfs clean -- %f                              # Replace large files with LFS pointers at commit
+
+# Repository initialization settings
+[init]
+  defaultBranch = main                                     # Default branch name for new repositories
+
+# Useful Git aliases
+[alias]
+  co = checkout                                            # Short alias for checkout
+  br = branch                                              # Short alias for branch
+  ci = commit                                              # Short alias for commit
+  st = status                                              # Short alias for status
+  lg = log --oneline --graph --decorate --all              # Graph view of all branches
+  lol = log --oneline --graph --decorate --all             # Alternate shorter alias
+  amend = commit --amend --no-edit                         # Amend the last commit without editing the message
+  hist = log --pretty=format:'%C(yellow)%h%Creset %ad | %s%C(bold blue) [%an]%Creset' --date=short  # Clean, short history
+  unstage = reset HEAD --                                  # Unstage files (soft reset)
+
+# Color settings
+[color]
+  ui = auto                                                # Enable automatic color output
+
+# Push behavior
+[push]
+  default = simple                                         # Push the current branch only to its matching upstream
+
+# Merge conflict settings
+[merge]
+  conflictstyle = diff3                                    # Show ancestor information in conflict markers
+
+# Diff tool configuration
+[diff]
+  tool = vscode                                            # Set VS Code as the diff tool
+
+[difftool "vscode"]
+  cmd = code --wait --diff $LOCAL $REMOTE                  # Command to launch VS Code for diffs
+
+# Credential storage
+[credential]
+  helper = osxkeychain                                     # Use macOS Keychain for storing Git credentials
+
+# Conflict resolution helper
+[rerere]
+  enabled = true                                           # Remember conflict resolutions to reuse automatically
+
+# Rebase behavior
+[rebase]
+  autoSquash = true                                        # Auto-squash fixup! and squash! commits during rebase
