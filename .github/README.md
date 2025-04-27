@@ -18,7 +18,7 @@ Install the following tools before proceeding with the setup:
 
 2. Install these with Homebrew.
     ```zsh
-    brew install nvm atuin direnv eza
+    brew install nvm atuin direnv eza pyenv
     brew install --cask iterm2
     ```
 
