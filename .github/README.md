@@ -66,7 +66,7 @@ Run these commands in your terminal:
     git clone https://github.com/dfinster/dotfiles ~/.config/dotfiles
     ```
 
-1. Source this in your `~/.zshenv` to bootstrap everything.
+1. Bootstrap the dotfiles from your `~/.zshenv`.
     ```zsh
     echo ". ~/.config/dotfiles/zsh/.zshenv" > ~/.zshenv
     ```
@@ -94,5 +94,5 @@ The local file is for user and machine specific settings, while the global file 
 ## Optional Setup
 
 - Set your preferred iTerm2 theme.
-- Install a [nerd font](https://www.nerdfonts.com/), then set it in iTerm2 preferences and VS Code settings.
+- Install a [nerd font](https://www.nerdfonts.com/), then set it in iTerm2 and VS Code.
 - Run `p10k configure` to customize your PowerLevel10k prompt.
