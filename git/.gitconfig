@@ -1,75 +1,134 @@
-# Shared Git configuration file
+# ==================================================
+# Shared Git Configuration File
+# ==================================================
 
-# Include additional local configuration if inside ~/ (personal machine settings)
+# Include additional local configuration if inside ~/
 [includeIf "gitdir:~/"]
   path = ~/.gitconfig.local
 
-# Core behavior
+# ==================================================
+# Core Behavior
+# ==================================================
+
+# Globally ignore these files in all repositories
+# Set VS Code as the default Git editor
+# Normalize line endings (useful for cross-platform teams)
 [core]
-  excludesfile = ~/.config/dotfiles/git/.gitignore.global  # Globally ignore these files in all repositories
-  editor = code --wait                                     # Set VS Code as the default Git editor
+  excludesfile = ~/.config/dotfiles/git/.gitignore.global
+  editor = code --wait
+  autocrlf = input
 
-# GPG/SSH signing configuration
-[gpg]
-  format = ssh                                             # Use SSH keys for commit signing
-
-[commit]
-  gpgsign = true                                           # Always GPG-sign commits
-
-[gpg "ssh"]
-  program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign  # Use 1Password to sign with SSH keys
-  allowedSignersFile = ~/.ssh/allowed_signers                        # Allowed SSH public keys for verification
-
-# Git LFS configuration
-[filter "lfs"]
-  smudge = git-lfs smudge -- %f                            # Replace LFS pointer files with real content at checkout
-  process = git-lfs filter-process                         # Use efficient LFS filter process
-  required = true                                          # Require LFS for proper repo operation
-  clean = git-lfs clean -- %f                              # Replace large files with LFS pointers at commit
-
-# Repository initialization settings
-[init]
-  defaultBranch = main                                     # Default branch name for new repositories
-
-# Useful Git aliases
-[alias]
-  co = checkout                                            # Short alias for checkout
-  br = branch                                              # Short alias for branch
-  ci = commit                                              # Short alias for commit
-  st = status                                              # Short alias for status
-  lg = log --oneline --graph --decorate --all              # Graph view of all branches
-  lol = log --oneline --graph --decorate --all             # Alternate shorter alias
-  amend = commit --amend --no-edit                         # Amend the last commit without editing the message
-  hist = log --pretty=format:'%C(yellow)%h%Creset %ad | %s%C(bold blue) [%an]%Creset' --date=short  # Clean, short history
-  unstage = reset HEAD --                                  # Unstage files (soft reset)
-
-# Color settings
+# Enable automatic color output
 [color]
-  ui = auto                                                # Enable automatic color output
+  ui = auto
 
-# Push behavior
+# Default branch name for new repositories
+[init]
+  defaultBranch = main
+
+# ==================================================
+# Commit Signing (GPG/SSH)
+# ==================================================
+
+# Use SSH keys for commit signing
+[gpg]
+  format = ssh
+
+# Always GPG-sign commits
+[commit]
+  gpgsign = true
+
+# Use 1Password to sign with SSH keys
+# Allowed SSH public keys for verification
+[gpg "ssh"]
+  program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+  allowedSignersFile = ~/.ssh/allowed_signers
+
+# ==================================================
+# Git LFS
+# ==================================================
+
+# Use efficient LFS filter process
+# Require LFS for proper repo operation
+[filter "lfs"]
+  process = git-lfs filter-process
+  required = true
+
+# ==================================================
+# Aliases
+# ==================================================
+
+[alias]
+  # Basic commands
+  co = checkout
+  br = branch
+  ci = commit
+  st = status
+
+  # Log and history views
+  lg = log --oneline --graph --decorate --all
+  lol = log --oneline --graph --decorate --all
+  hist = log --pretty=format:'%C(yellow)%h%Creset %ad | %s%C(bold blue) [%an]%Creset' --date=short
+  lgraph = log --all --graph --decorate --abbrev-commit --date=relative --pretty=format:'%C(auto)%h %d %s %C(blue)(%cr) %C(green)<%an>'
+  last = log -1 HEAD
+
+  # Commit and reset helpers
+  amend = commit --amend --no-edit
+  unstage = reset HEAD --
+  undo = reset --soft HEAD~1
+
+  # Object inspection
+  type = cat-file -t
+  dump = cat-file -p
+
+  # Stash shortcuts
+  save = stash push -m "WIP"
+  pop = stash pop
+
+# ==================================================
+# Push and Pull Behavior
+# ==================================================
+
+# Push the current branch only to its matching upstream
 [push]
-  default = simple                                         # Push the current branch only to its matching upstream
+  default = simple
 
-# Merge conflict settings
+# Use rebase instead of merge when pulling changes
+[pull]
+  rebase = true
+
+# ==================================================
+# Merge and Rebase Behavior
+# ==================================================
+
+# Show ancestor information in conflict markers
 [merge]
-  conflictstyle = diff3                                    # Show ancestor information in conflict markers
+  conflictstyle = diff3
 
-# Diff tool configuration
-[diff]
-  tool = vscode                                            # Set VS Code as the diff tool
-
-[difftool "vscode"]
-  cmd = code --wait --diff $LOCAL $REMOTE                  # Command to launch VS Code for diffs
-
-# Credential storage
-[credential]
-  helper = osxkeychain                                     # Use macOS Keychain for storing Git credentials
-
-# Conflict resolution helper
-[rerere]
-  enabled = true                                           # Remember conflict resolutions to reuse automatically
-
-# Rebase behavior
+# Auto-squash fixup! and squash! commits during rebase
 [rebase]
-  autoSquash = true                                        # Auto-squash fixup! and squash! commits during rebase
+  autoSquash = true
+
+# Remember conflict resolutions to reuse automatically
+[rerere]
+  enabled = true
+
+# ==================================================
+# Diff Tool Configuration
+# ==================================================
+
+# Set VS Code as the diff tool
+[diff]
+  tool = vscode
+
+# Command to launch VS Code for diffs
+[difftool "vscode"]
+  cmd = code --wait --diff $LOCAL $REMOTE
+
+# ==================================================
+# Credential Management
+# ==================================================
+
+# Use macOS Keychain for storing Git credentials
+[credential]
+  helper = osxkeychain
