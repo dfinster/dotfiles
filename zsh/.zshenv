@@ -25,6 +25,12 @@ export ZDOTDIR="$DOTFILES/zsh"
 # Set Git configuration directory.
 export GIT_CONFIG_GLOBAL="$DOTFILES/git/.gitconfig"
 
+# Bootstrap ~/.gitconfig symlink to $GIT_CONFIG_GLOBAL
+if [[ ! -L "$HOME/.gitconfig" || "$(readlink "$HOME/.gitconfig")" != "$GIT_CONFIG_GLOBAL" ]]; then
+  echo "Linking ~/.gitconfig to \$GIT_CONFIG_GLOBAL: $GIT_CONFIG_GLOBAL"
+  ln -sf "$GIT_CONFIG_GLOBAL" "$HOME/.gitconfig"
+fi
+
 # Make VS Code behave as terminal editor
 # Also requires the local `code-wait` plugin, found in .zsh_plugins.txt
 export VISUAL=code-wait
