@@ -35,8 +35,10 @@
   format = ssh
 
 # Always GPG-sign commits
+# Include the full unified diff of staged changes when writing commit message
 [commit]
   gpgsign = true
+  verbose = true
 
 # Use 1Password to sign with SSH keys
 # Allowed SSH public keys for verification
@@ -132,3 +134,9 @@
 # Use macOS Keychain for storing Git credentials
 [credential]
   helper = osxkeychain
+
+# ==================================================
+# URL Rewriting to use SSH for GitHub
+# ==================================================
+[url "git@github.com:"]
+  insteadOf = https://github.com/
