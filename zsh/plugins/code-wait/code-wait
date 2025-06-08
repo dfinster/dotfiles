@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-exec code --wait "$@"
+exec code --wait "$@"  # open VS Code and wait for it to close
