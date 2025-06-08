@@ -3,7 +3,7 @@
 # ==================================================
 
 # Include additional local configuration if inside ~/
-[includeIf "gitdir:~/"]       # extra config when working in home repos
+[includeIf "gitdir:~/"]        # extra config when working in home repos
   path = ~/.gitconfig.local    # file to include
 
 # ==================================================
@@ -13,17 +13,17 @@
 # Globally ignore these files in all repositories
 # Set VS Code as the default Git editor
 # Normalize line endings (useful for cross-platform teams)
-[core]                         # core settings
+[core]                           # core settings
   excludesfile = ~/.config/dotfiles/git/.gitignore.global # global ignore file
   editor = code --wait           # open VS Code and wait
   autocrlf = input               # convert CRLF to LF on commit
 
 # Enable automatic color output
-[color]                        # color output
+[color]                         # color output
   ui = auto                     # enable color in all commands
 
 # Default branch name for new repositories
-[init]                         # initialization defaults
+[init]                          # initialization defaults
   defaultBranch = main          # new repos start on main
 
 # ==================================================
@@ -31,12 +31,12 @@
 # ==================================================
 
 # Use SSH keys for commit signing
-[gpg]                          # commit signing
+[gpg]                           # commit signing
   format = ssh                  # sign using SSH keys
 
 # Always GPG-sign commits
 # Include the full unified diff of staged changes when writing commit message
-[commit]                       # commit defaults
+[commit]                        # commit defaults
   gpgsign = true                # sign commits automatically
   verbose = true                # show diff in editor
 
@@ -52,7 +52,7 @@
 
 # Use efficient LFS filter process
 # Require LFS for proper repo operation
-[filter "lfs"]                # git LFS settings
+[filter "lfs"]                      # git LFS settings
   process = git-lfs filter-process  # filter process used by LFS
   required = true                   # enforce use of LFS
 
@@ -60,7 +60,7 @@
 # Aliases
 # ==================================================
 
-[alias]                       # command shortcuts
+[alias]                        # command shortcuts
   # Basic commands
   co = checkout                # short for git checkout
   br = branch                  # list or create branches
@@ -75,7 +75,7 @@
   last = log -1 HEAD           # show last commit
 
   # Commit and reset helpers
-  amend = commit --amend --no-edit  # amend last commit without editing
+  amend = commit --amend --no-edit   # amend last commit without editing
   unstage = reset HEAD --            # unstage files
   undo = reset --soft HEAD~1         # undo last commit but keep changes
 
@@ -92,11 +92,11 @@
 # ==================================================
 
 # Push the current branch only to its matching upstream
-[push]                        # pushing behavior
+[push]                         # pushing behavior
   default = simple             # push current branch only
 
 # Use rebase instead of merge when pulling changes
-[pull]                        # pulling behavior
+[pull]                         # pulling behavior
   rebase = true                # rebase instead of merge
 
 # ==================================================
@@ -104,15 +104,15 @@
 # ==================================================
 
 # Show ancestor information in conflict markers
-[merge]                       # merge conflict style
+[merge]                        # merge conflict style
   conflictstyle = diff3        # show ancestor diff
 
 # Auto-squash fixup! and squash! commits during rebase
-[rebase]                      # rebase options
+[rebase]                       # rebase options
   autoSquash = true            # autosquash fixup commits
 
 # Remember conflict resolutions to reuse automatically
-[rerere]                      # reuse recorded resolutions
+[rerere]                       # reuse recorded resolutions
   enabled = true               # enable rerere
 
 # ==================================================
@@ -120,7 +120,7 @@
 # ==================================================
 
 # Set VS Code as the diff tool
-[diff]                        # diff tool
+[diff]                         # diff tool
   tool = vscode                # use VS Code
 
 # Command to launch VS Code for diffs
@@ -132,11 +132,11 @@
 # ==================================================
 
 # Use macOS Keychain for storing Git credentials
-[credential]                  # credential helper
+[credential]                   # credential helper
   helper = osxkeychain         # store creds in Keychain
 
 # ==================================================
 # URL Rewriting to use SSH for GitHub
 # ==================================================
-[url "git@github.com:"]        # rewrite GitHub URLs to SSH
+[url "git@github.com:"]            # rewrite GitHub URLs to SSH
   insteadOf = https://github.com/  # replace https with ssh

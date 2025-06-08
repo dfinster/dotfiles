@@ -2,12 +2,12 @@
 # .zshenv - Zsh environment file, loaded always.
 
 # Enable extended globbing for advanced pattern matching.
-setopt EXTENDED_GLOB                       # allow advanced globs
+setopt EXTENDED_GLOB                        # allow advanced globs
 
 # Set the configuration directories.
-export XDG_CONFIG_HOME="$HOME/.config"     # base config dir
-export XDG_DATA_HOME="$HOME/.local/share"  # base data dir
-export XDG_CACHE_HOME="$HOME/.cache"       # base cache dir
+export XDG_CONFIG_HOME="$HOME/.config"      # base config dir
+export XDG_DATA_HOME="$HOME/.local/share"   # base data dir
+export XDG_CACHE_HOME="$HOME/.cache"        # base cache dir
 export DOTFILES="$XDG_CONFIG_HOME/dotfiles" # location of this repo
 
 if [[ ! -d "$DOTFILES" ]]; then
@@ -85,19 +85,19 @@ fi
 # Make VS Code behave as terminal editor
 export VISUAL=code-wait                         # VS Code helper script
 export EDITOR="$VISUAL"                         # default editor
-export GIT_EDITOR="$VISUAL"                    # git editor
-export KUBE_EDITOR="$VISUAL"                   # kubectl editor
+export GIT_EDITOR="$VISUAL"                     # git editor
+export KUBE_EDITOR="$VISUAL"                    # kubectl editor
 
 # Set Atuin configuration directory.
-export ATUIN_CONFIG_DIR="$DOTFILES/atuin"      # Atuin config path
+export ATUIN_CONFIG_DIR="$DOTFILES/atuin"       # Atuin config path
 
 # Ensure path arrays do not contain duplicates.
 typeset -gU path fpath                          # deduplicate path arrays
 
 # Set the list of directories that zsh searches for commands.
 path=(
-  "$HOME"/{,s}bin(N)                           # user binaries
-  "$HOME"/.local/{,s}bin(N)                    # local binaries
+  "$HOME"/{,s}bin(N)                            # user binaries
+  "$HOME"/.local/{,s}bin(N)                     # local binaries
   /opt/{homebrew,local}/{,s}bin(N)              # optional binaries
   /usr/local/{,s}bin(N)                         # local system binaries
   $path

@@ -1,4 +1,4 @@
 # Ignore files in all repositories
 # macOS system files
 .DS_Store   # Finder metadata files
-dfinster.*  # personal files starting with this prefix
+my-personal.*  # personal files starting with this prefix

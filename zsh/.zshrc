@@ -21,14 +21,14 @@ if [[ ! -d ${ZDOTDIR:-$HOME}/.antidote ]]; then
 fi
 
 # Load antidote plugins
-source ${ZDOTDIR:-$HOME}/.antidote/antidote.zsh  # load plugin manager
+source ${ZDOTDIR:-$HOME}/.antidote/antidote.zsh   # load plugin manager
 antidote load                                     # install plugins
 
 # Source anything in .zshrc.d.
 for _rc in ${ZDOTDIR:-$HOME}/.zshrc.d/*.zsh; do   # source plugin configs
   # But ignore tilde files (also .gitignored)
   if [[ $_rc:t != '~'* ]]; then
-    source "$_rc"                               # skip backup files
+    source "$_rc"                                 # skip backup files
   fi
 done
 unset _rc
