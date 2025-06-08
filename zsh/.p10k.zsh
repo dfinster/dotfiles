@@ -3,6 +3,7 @@
 # Wizard options: nerdfont-v3 + powerline, small icons, pure, snazzy, 2 lines, sparse,
 # transient_prompt, instant_prompt=quiet.
 # Type `p10k configure` to generate another config.
+# For a breakdown of major sections see documentation/README.md.
 #
 # Config file for Powerlevel10k with the style of Pure (https://github.com/sindresorhus/pure).
 #

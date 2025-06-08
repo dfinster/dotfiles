@@ -38,11 +38,11 @@
 
 ## which search mode to use
 ## possible values: prefix, fulltext, fuzzy, skim
-search_mode = "prefix"
+search_mode = "prefix"        # search by prefix only
 
 ## which filter mode to use
 ## possible values: global, host, session, directory
-filter_mode = "global"
+filter_mode = "global"        # search all hosts and sessions
 
 ## With workspace filtering enabled, Atuin will filter for commands executed
 ## in any directory within a git repository tree (default: false)
@@ -52,7 +52,7 @@ filter_mode = "global"
 ## the accepted values are identical to those of "filter_mode"
 ## leave unspecified to use same mode set in "filter_mode"
 # filter_mode_shell_up_key_binding = "global"
-filter_mode_shell_up_key_binding = "directory" # or global, host, directory, etc
+filter_mode_shell_up_key_binding = "directory" # up arrow searches within cwd
 
 ## which search mode to use when atuin is invoked from a shell up-key binding
 ## the accepted values are identical to those of "search_mode"
@@ -61,7 +61,7 @@ filter_mode_shell_up_key_binding = "directory" # or global, host, directory, etc
 
 ## which style to use
 ## possible values: auto, full, compact
-style = "compact"
+style = "compact"             # compact terminal UI
 
 ## the maximum number of lines the interface should take up
 ## set it to 0 to always go full screen
@@ -72,7 +72,7 @@ style = "compact"
 
 ## enable or disable showing a preview of the selected command
 ## useful when the command is longer than the terminal width and is cut off
-show_preview = false
+show_preview = false          # disable preview window
 
 ## what to do when the escape key is pressed when searching
 ## possible values: return-original, return-query
@@ -121,10 +121,10 @@ show_preview = false
 ## Configure whether or not to show the help row, which includes the current Atuin
 ## version (and whether an update is available), a keymap hint, and the total
 ## amount of commands in your history.
-show_help = false
+show_help = false             # hide help row in UI
 
 ## Configure whether or not to show tabs for search and inspect
-show_tabs = false
+show_tabs = false             # no search/inspect tabs
 
 ## Defaults to true. This matches history against a set of default regex, and will not save it if we get a match. Defaults include
 ## 1. AWS key id
@@ -136,7 +136,7 @@ show_tabs = false
 
 ## Defaults to true. If enabled, upon hitting enter Atuin will immediately execute the command. Press tab to return to the shell and edit.
 # This applies for new installs. Old installs will keep the old behaviour unless configured otherwise.
-enter_accept = false
+enter_accept = false          # don't run command immediately
 
 ## Defaults to "emacs".  This specifies the keymap on the startup of `atuin
 ## search`.  If this is set to "auto", the startup keymap mode in the Atuin
@@ -161,7 +161,7 @@ enter_accept = false
 ## Alternatively, set env NO_MOTION=true
 # prefers_reduced_motion = false
 
-[stats]
+[stats]                        # statistics configuration
 ## Set commands where we should consider the subcommand for statistics. Eg, kubectl get vs just kubectl
 # common_subcommands = [
 #   "apt",
@@ -195,24 +195,24 @@ enter_accept = false
 #   "vi"
 # ]
 
-[keys]
+[keys]                        # key handling
 # Defaults to true. If disabled, using the up/down key won't exit the TUI when scrolled past the first/last entry.
-scroll_exits = false
+scroll_exits = false          # up/down at end doesn't exit
 
-[sync]
+[sync]                        # sync configuration
 # Enable sync v2 by default
 # This ensures that sync v2 is enabled for new installs only
 # In a later release it will become the default across the board
-records = true
+records = true                # enable sync v2 records
 
-[preview]
+[preview]                     # preview config
 ## which preview strategy to use to calculate the preview height (respects max_preview_height).
 ## possible values: auto, static
 ## auto: length of the selected command.
 ## static: length of the longest command stored in the history.
 # strategy = "auto"
 
-[daemon]
+[daemon]                      # background daemon options
 ## Enables using the daemon to sync. Requires the daemon to be running in the background. Start it with `atuin daemon`
 # enabled = false
 

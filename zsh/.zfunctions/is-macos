@@ -1,2 +1,2 @@
 #!/bin/zsh
-[[ $OSTYPE == *darwin* ]]
+[[ $OSTYPE == *darwin* ]]  # return success on macOS
