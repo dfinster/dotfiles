@@ -14,7 +14,6 @@
 # Set VS Code as the default Git editor
 # Normalize line endings (useful for cross-platform teams)
 [core]                           # core settings
-  excludesfile = ~/.config/dotfiles/git/.gitignore.global # global ignore file
   editor = code --wait           # open VS Code and wait
   autocrlf = input               # convert CRLF to LF on commit
 
