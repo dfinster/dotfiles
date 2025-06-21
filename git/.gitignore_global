@@ -1,0 +1,2 @@
+# Ignore all files that start with "local-" followed by any characters
+local-*
