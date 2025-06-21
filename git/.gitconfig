@@ -16,6 +16,7 @@
 [core]                           # core settings
   editor = code --wait           # open VS Code and wait
   autocrlf = input               # convert CRLF to LF on commit
+	excludesfile = ~/.config/dotfiles/git/.gitignore_global
 
 # Enable automatic color output
 [color]                         # color output
