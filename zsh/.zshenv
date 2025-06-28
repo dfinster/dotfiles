@@ -9,24 +9,15 @@ export XDG_CONFIG_HOME="$HOME/.config"      # base config dir
 export XDG_DATA_HOME="$HOME/.local/share"   # base data dir
 export XDG_CACHE_HOME="$HOME/.cache"        # base cache dir
 export DOTFILES="$XDG_CONFIG_HOME/dotfiles" # location of this repo
+export ZDOTDIR="$DOTFILES/zsh"              # Set ZDOTDIR to re-home Zsh.
 
-if [[ ! -d "$DOTFILES" ]]; then
-  echo "Warning: \$DOTFILES directory ($DOTFILES) does not exist." >&2
-  echo "Starting a minimal shell..." >&2
-  # Reset important variables to minimal defaults
-  export PATH="/usr/bin:/bin:/usr/sbin:/sbin"  # minimal PATH
-  unset ZDOTDIR
-  return 0
-fi
+# Set Git configuration directory
+export GIT_CONFIG_GLOBAL="$DOTFILES/git/.gitconfig"
 
-# Set ZDOTDIR to re-home Zsh.
-export ZDOTDIR="$DOTFILES/zsh"              # use repo's zsh directory
-
-# Set Git configuration directory (must be absolute or resolvable)
-export GIT_CONFIG_GLOBAL="$DOTFILES/git/.gitconfig" # global git config
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Only run this in interactive shells to avoid slowing down scripts or CI.
+# Create a symlink for ~/.gitconfig to the global Git config file.
+# This allows for a single Git configuration file to be used across all repositories.
+# It is only created if the target exists and is a regular file.
+# Only runs in interactive shells to avoid slowing down scripts or CI.
 if [[ -o interactive ]]; then
 
   # 1. Ensure GIT_CONFIG_GLOBAL is defined and non-empty before proceeding.
@@ -87,12 +78,9 @@ export VISUAL=code-wait                         # VS Code helper script
 export EDITOR="$VISUAL"                         # default editor
 export GIT_EDITOR="$VISUAL"                     # git editor
 export KUBE_EDITOR="$VISUAL"                    # kubectl editor
+export ATUIN_CONFIG_DIR="$DOTFILES/atuin"       # Set Atuin configuration directory.
 
-# Set Atuin configuration directory.
-export ATUIN_CONFIG_DIR="$DOTFILES/atuin"       # Atuin config path
-
-# Ensure path arrays do not contain duplicates.
-typeset -gU path fpath                          # deduplicate path arrays
+typeset -gU path fpath                          # Ensure path arrays do not contain duplicates.
 
 # Set the list of directories that zsh searches for commands.
 path=(
