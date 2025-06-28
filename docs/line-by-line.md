@@ -3,16 +3,23 @@
 This document provides a detailed walkthrough of the configuration files in this repository. Each section explains what every line in the corresponding file does so you can easily add inline comments or modify the behavior.
 
 ## Table of Contents
-- [Atuin configuration](#atuin-configuration)
-- [Git configuration](#git-configuration)
-- [Zsh environment](#zsh-environment)
-- [Zsh profile](#zsh-profile)
-- [Zsh runtime configuration](#zsh-runtime-configuration)
-- [Zsh styles](#zsh-styles)
-- [Powerlevel10k theme](#powerlevel10k-theme)
-- [Zsh plugin list](#zsh-plugin-list)
-- [Zsh custom functions](#zsh-custom-functions)
-- [Zsh plugin scripts](#zsh-plugin-scripts)
+- [Dotfiles Repository Documentation](#dotfiles-repository-documentation)
+  - [Table of Contents](#table-of-contents)
+  - [Atuin configuration](#atuin-configuration)
+  - [Git configuration](#git-configuration)
+    - [Global Git ignore](#global-git-ignore)
+  - [Zsh environment](#zsh-environment)
+  - [Zsh profile](#zsh-profile)
+  - [Zsh runtime configuration](#zsh-runtime-configuration)
+  - [Zsh styles](#zsh-styles)
+  - [Powerlevel10k theme](#powerlevel10k-theme)
+  - [Zsh plugin list](#zsh-plugin-list)
+  - [Zsh custom functions](#zsh-custom-functions)
+  - [Zsh plugin scripts](#zsh-plugin-scripts)
+    - [`zsh/plugins/code-wait/code-wait`](#zshpluginscode-waitcode-wait)
+    - [`zsh/.zshrc.d/aliases.zsh`](#zshzshrcdaliaseszsh)
+    - [`zsh/.zshrc.d/brew.zsh`](#zshzshrcdbrewzsh)
+    - [`zsh/.zshrc.d/options.zsh`](#zshzshrcdoptionszsh)
 
 Each section lists the file path followed by line–by–line notes.
 
