@@ -1,2 +1,10 @@
-# Ignore all files that start with "local-" followed by any characters
-local-*
+# Git global ignore file
+# This file is used to specify files and directories that should be ignored by Git globally.
+
+# Ignore local files and directories
+*.local.*
+*.local/
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
