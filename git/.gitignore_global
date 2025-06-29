@@ -3,7 +3,7 @@
 
 # Ignore local files and directories
 *.local.*
-*.local/
+*.local
 
 # Ignore OS-specific files
 .DS_Store
