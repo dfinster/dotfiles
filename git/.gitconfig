@@ -55,6 +55,8 @@
 [filter "lfs"]                      # git LFS settings
   process = git-lfs filter-process  # filter process used by LFS
   required = true                   # enforce use of LFS
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
 
 # ==================================================
 # Aliases
