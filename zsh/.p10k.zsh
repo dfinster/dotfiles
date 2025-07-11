@@ -99,7 +99,11 @@
   typeset -g POWERLEVEL9K_VIRTUALENV_FOREGROUND=$grey
   # Don't show Python version.
   typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_PYTHON_VERSION=false
-  typeset -g POWERLEVEL9K_VIRTUALENV_{LEFT,RIGHT}_DELIMITER=
+  # Add parentheses and snake emoji around venv name
+  typeset -g POWERLEVEL9K_VIRTUALENV_LEFT_DELIMITER='(🐍 '
+  typeset -g POWERLEVEL9K_VIRTUALENV_RIGHT_DELIMITER=')'
+  # Show actual venv folder name instead of current directory
+  typeset -g POWERLEVEL9K_VIRTUALENV_GENERIC_NAMES=
 
   # Blue current directory.
   typeset -g POWERLEVEL9K_DIR_FOREGROUND=$blue
