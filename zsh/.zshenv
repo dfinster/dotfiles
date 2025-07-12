@@ -26,6 +26,8 @@ path=(
   "$HOME"/.local/{,s}bin(N)             # local binaries
   /opt/{homebrew,local}/{,s}bin(N)      # optional binaries
   /usr/local/{,s}bin(N)                 # local system binaries
+  /usr/local/go/bin(N)                  # Go binaries
+  "$HOME"/go/bin(N)                     # Go installed binaries
   $path
 )
 
