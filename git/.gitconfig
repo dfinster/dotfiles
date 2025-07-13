@@ -142,3 +142,5 @@
 # ==================================================
 [url "git@github.com:"]            # rewrite GitHub URLs to SSH
   insteadOf = https://github.com/  # replace https with ssh
+[tag]
+	gpgSign = true
