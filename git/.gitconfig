@@ -40,6 +40,9 @@
   gpgsign = true                # sign commits automatically
   verbose = true                # show diff in editor
 
+[tag]
+	gpgSign = true                # sign tags automatically
+
 # Use 1Password to sign with SSH keys
 # Allowed SSH public keys for verification
 [gpg "ssh"]                     # SSH signing tool
@@ -142,5 +145,3 @@
 # ==================================================
 [url "git@github.com:"]            # rewrite GitHub URLs to SSH
   insteadOf = https://github.com/  # replace https with ssh
-[tag]
-	gpgSign = true
