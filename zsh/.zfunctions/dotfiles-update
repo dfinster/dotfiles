@@ -1,0 +1,133 @@
+#!/bin/zsh
+#
+# dotfiles-update - Check for and apply dotfiles updates from GitHub
+#
+
+# Exit early if DOTFILES environment variable is not set
+if [[ -z "$DOTFILES" ]]; then
+    return 0
+fi
+
+# Exit early if dotfiles directory doesn't exist
+if [[ ! -d "$DOTFILES" ]]; then
+    return 0
+fi
+
+# Change to dotfiles directory
+pushd "$DOTFILES" >/dev/null || return 0
+
+# Exit early if not in a git repository
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    popd >/dev/null
+    return 0
+fi
+
+# Exit early if not on main branch
+local current_branch
+current_branch=$(git branch --show-current)
+if [[ "$current_branch" != "main" ]]; then
+    popd >/dev/null
+    return 0
+fi
+
+# Check if we can reach GitHub (fail silently if offline)
+if ! git ls-remote origin >/dev/null 2>&1; then
+    popd >/dev/null
+    return 0
+fi
+
+# Fetch latest remote information
+git fetch origin main >/dev/null 2>&1
+
+# Check if local branch is ahead of remote
+local commits_ahead commits_behind
+commits_ahead=$(git rev-list --count origin/main..HEAD)
+commits_behind=$(git rev-list --count HEAD..origin/main)
+
+# Exit if not behind remote (either up to date or ahead)
+if [[ "$commits_behind" -eq 0 ]]; then
+    popd >/dev/null
+    return 0
+fi
+
+# Get current and remote commit hashes for display
+local current_commit remote_commit
+current_commit=$(git rev-parse HEAD)
+remote_commit=$(git rev-parse origin/main)
+
+# Get commit dates for display
+local current_date remote_date
+current_date=$(git log -1 --format="%ad" --date=short HEAD)
+remote_date=$(git log -1 --format="%ad" --date=short origin/main)
+
+# Show what's new before prompting
+echo "🔄 A dotfiles update is available"
+echo "You are ${commits_ahead} commit(s) ahead and ${commits_behind} commit(s) behind the remote."
+echo "Current: $current_date (${current_commit:0:7})"
+echo "Latest:  $remote_date (${remote_commit:0:7})"
+echo
+echo "📋 New changes:"
+echo "──────────────"
+git log --oneline --pretty=format:"• %s" HEAD..origin/main
+echo
+echo
+echo -n "Would you like to update? [y/N]: "
+read -r response
+
+case "$response" in
+    [yY]|[yY][eE][sS])
+        echo "📦 Updating dotfiles..."
+
+        # Stash any local changes
+        local stash_created=false
+        if ! git diff-index --quiet HEAD --; then
+            git stash push -m "Auto-stash before dotfiles update $(date)"
+            stash_created=true
+            echo "💾 Local changes stashed"
+        fi
+
+        # Pull latest changes
+        if git pull origin main; then
+            echo "✅ Dotfiles updated successfully!"
+
+            # Show release notes if available
+            if [[ -f "CHANGELOG.md" ]] || [[ -f "RELEASES.md" ]]; then
+                local changelog="CHANGELOG.md"
+                [[ -f "RELEASES.md" ]] && changelog="RELEASES.md"
+
+                echo
+                echo "📋 Recent changes:"
+                echo "─────────────────"
+                # Show recent commits as release notes
+                git log --oneline --since="1 week ago" --pretty=format:"• %s" | head -10
+            else
+                echo
+                echo "📋 Recent commits:"
+                echo "─────────────────"
+                git log --oneline "$current_commit..HEAD" --pretty=format:"• %s"
+            fi
+
+            echo
+            echo "🔄 Please restart your terminal to apply all changes."
+            echo -n "Press Enter to continue..."
+            read -r
+
+        else
+            echo "❌ Update failed!"
+
+            # Restore stashed changes if we created a stash
+            if [[ "$stash_created" == "true" ]]; then
+                git stash pop
+                echo "💾 Local changes restored"
+            fi
+
+            popd >/dev/null
+            return 1
+        fi
+        ;;
+    *)
+        echo "⏭️  Update skipped"
+        ;;
+esac
+
+popd >/dev/null
