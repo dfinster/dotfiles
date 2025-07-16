@@ -66,11 +66,6 @@ echo "You are ${commits_ahead} commit(s) ahead and ${commits_behind} commit(s) b
 echo "Current: $current_date (${current_commit:0:7})"
 echo "Latest:  $remote_date (${remote_commit:0:7})"
 echo
-echo "📋 New changes:"
-echo "──────────────"
-git log --oneline --pretty=format:"• %s" HEAD..origin/main
-echo
-echo
 echo -n "Would you like to update? [y/N]: "
 read -r response
 
@@ -89,24 +84,6 @@ case "$response" in
         # Pull latest changes
         if git pull origin main; then
             echo "✅ Dotfiles updated successfully!"
-
-            # Show release notes if available
-            if [[ -f "CHANGELOG.md" ]] || [[ -f "RELEASES.md" ]]; then
-                local changelog="CHANGELOG.md"
-                [[ -f "RELEASES.md" ]] && changelog="RELEASES.md"
-
-                echo
-                echo "📋 Recent changes:"
-                echo "─────────────────"
-                # Show recent commits as release notes
-                git log --oneline --since="1 week ago" --pretty=format:"• %s" | head -10
-            else
-                echo
-                echo "📋 Recent commits:"
-                echo "─────────────────"
-                git log --oneline "$current_commit..HEAD" --pretty=format:"• %s"
-            fi
-
             echo
             echo "🔄 Please restart your terminal to apply all changes."
             echo -n "Press Enter to continue..."
