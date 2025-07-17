@@ -30,6 +30,20 @@ if [[ "$current_branch" != "main" ]]; then
     return 0
 fi
 
+# Check cache file to avoid frequent network operations
+local cache_file="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-check-cache"
+local cache_duration=43200  # 12 hours in seconds
+
+# Skip fetch if we've checked recently
+if [[ -f "$cache_file" ]]; then
+    local cache_time=$(stat -f %m "$cache_file" 2>/dev/null || echo 0)
+    local current_time=$(date +%s)
+    if (( current_time - cache_time < cache_duration )); then
+        popd >/dev/null
+        return 0
+    fi
+fi
+
 # Check if we can reach GitHub (fail silently if offline)
 if ! git ls-remote origin >/dev/null 2>&1; then
     popd >/dev/null
@@ -39,33 +53,24 @@ fi
 # Fetch latest remote information
 git fetch origin main >/dev/null 2>&1
 
-# Check if local branch is ahead of remote
-local commits_ahead commits_behind
-commits_ahead=$(git rev-list --count origin/main..HEAD)
+# Update cache file to record successful check
+mkdir -p "$(dirname "$cache_file")"
+touch "$cache_file"
+
+# Check if local branch is behind remote (lightweight check first)
+local commits_behind
 commits_behind=$(git rev-list --count HEAD..origin/main)
 
-# Exit if not behind remote (either up to date or ahead)
+# Exit early if up to date (most common case)
 if [[ "$commits_behind" -eq 0 ]]; then
     popd >/dev/null
     return 0
 fi
 
-# Get current and remote commit hashes for display
-local current_commit remote_commit
-current_commit=$(git rev-parse HEAD)
-remote_commit=$(git rev-parse origin/main)
-
-# Get commit dates for display
-local current_date remote_date
-current_date=$(git log -1 --format="%ad" --date=short HEAD)
-remote_date=$(git log -1 --format="%ad" --date=short origin/main)
-
 # Show what's new and prompt user to run update
-echo "🔄 A dotfiles update is available"
-echo "You are ${commits_ahead} commit(s) ahead and ${commits_behind} commit(s) behind the remote."
-echo "Current: $current_date (${current_commit:0:7})"
-echo "Latest:  $remote_date (${remote_commit:0:7})"
+echo "\033[93m🔄 A dotfiles update is available\033[0m"
+echo "You are \033[93m${commits_behind}\033[0m commit(s) behind the remote."
 echo
-echo "Run 'dotfiles-update' to apply the update."
+echo "Run '\033[93mdotfiles-update\033[0m' to apply the update."
 
 popd >/dev/null
