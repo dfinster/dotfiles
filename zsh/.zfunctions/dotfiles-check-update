@@ -68,7 +68,8 @@ if [[ "$commits_behind" -eq 0 ]]; then
 fi
 
 # Show what's new and prompt user to run update
-echo "\033[93m🔄 A dotfiles update is available\033[0m"
+echo
+echo "\033[93mA dotfiles update is available.\033[0m"
 echo "You are \033[93m${commits_behind}\033[0m commit(s) behind the remote."
 echo
 echo "Run '\033[93mdotfiles-update\033[0m' to apply the update."
