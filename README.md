@@ -39,4 +39,7 @@ Personal macOS dotfiles configuration for a modern shell environment with enhanc
 - **OrbStack Integration**: Container development environment support
 - **Path Management**: Intelligent PATH configuration for user and system binaries
 
+### Auto-update
+- **Detect and Update**: Automatically detects changes in the dotfiles repository and updates with user approval
+
 For more information, see the documentation at [docs.fortc.com/dotfiles](https://docs.fortc.com/dotfiles).
