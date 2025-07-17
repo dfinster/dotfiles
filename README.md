@@ -40,7 +40,8 @@ Personal macOS dotfiles configuration for a modern shell environment with enhanc
 - **Path Management**: Intelligent PATH configuration for user and system binaries
 
 ### Auto-update
-- **Detect and Update**: Automatically detects changes in the dotfiles repository and prompts user to update if desired
-- **Optimized Update Process**: Update process only checks once every 12 hours to improve terminal startup time
+- **Easy-update**: Gives user a single command to update dotfiles
+- **Update Notifications**: Notifies user of available updates with details on commits and changes
+- **Cached results**: Only checks once every 12 hours to improve terminal startup time
 
 For more information, see the documentation at [docs.fortc.com/dotfiles](https://docs.fortc.com/dotfiles).
