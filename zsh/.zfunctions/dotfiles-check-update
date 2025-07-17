@@ -72,7 +72,7 @@ echo
 echo "\033[93mA dotfiles update is available.\033[0m"
 echo "You are \033[93m${commits_behind}\033[0m commit(s) behind the remote."
 echo
-echo "See changelog at '\033[93mhttps://github.com/dfinster/dotfiles/blob/main/README.md\033[0m' for details."
+echo "See changelog at '\033[93mhttps://github.com/dfinster/dotfiles/blob/main/CHANGELOG.md\033[0m' for details."
 echo "Run '\033[93mdotfiles-update\033[0m' to apply the update."
 
 popd >/dev/null
