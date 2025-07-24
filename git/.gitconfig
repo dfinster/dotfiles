@@ -132,6 +132,9 @@
 [difftool "vscode"]            # VS Code diff command
   cmd = code --wait --diff $LOCAL $REMOTE  # open diff view
 
+[difftool]
+  prompt = false
+
 # ==================================================
 # Credential Management
 # ==================================================
