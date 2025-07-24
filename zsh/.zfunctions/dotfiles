@@ -1,0 +1,337 @@
+#!/bin/zsh
+#
+# dotfiles - Manage dotfiles repository
+
+# Show help function
+_dotfiles_help() {
+    echo "Usage: dotfiles <command>"
+    echo
+    echo "Commands:"
+    echo "  ${BLUE}update${RESET}  Apply dotfiles updates from GitHub"
+    echo "  ${BLUE}check${RESET}   Check for available updates"
+    echo "  ${BLUE}switch${RESET}  Switch to a different branch"
+    echo "  ${BLUE}help${RESET}    Show this help message"
+    echo
+    echo "Environment Variables (set in ${GREEN}~/.zshenv)${RESET}:"
+    echo "  ${BLUE}DOTFILES_BRANCH${RESET}   Preferred branch to use (default: 'main')"
+    echo "  ${BLUE}DOTFILES_VERBOSE${RESET}  true/false for verbosity (default: 'true')"
+}
+
+# Global variables for branch information
+target_branch=""
+current_branch=""
+
+# Constants
+readonly CACHE_DURATION=43200  # 12 hours in seconds
+
+# Color constants
+readonly YELLOW='\033[93m'
+readonly BLUE='\033[94m'
+readonly PURPLE='\033[95m'
+readonly GREEN='\033[92m'
+readonly RESET='\033[0m'
+
+# Cache OS detection
+_os_type=""
+_get_os_type() {
+    if [[ -z "$_os_type" ]]; then
+        _os_type="$(uname)"
+    fi
+    echo "$_os_type"
+}
+
+# Cache connectivity check
+_connectivity_checked=false
+_check_connectivity() {
+    if [[ "$_connectivity_checked" == "false" ]]; then
+        if git -C "$DOTFILES" ls-remote origin >/dev/null 2>&1; then
+            _connectivity_checked=true
+            return 0
+        else
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Common setup function
+_dotfiles_setup() {
+    # Exit early if DOTFILES environment variable is not set
+    if [[ -z "$DOTFILES" ]]; then
+        return 1
+    fi
+
+    # Exit early if dotfiles directory doesn't exist
+    if [[ ! -d "$DOTFILES" ]]; then
+        return 1
+    fi
+
+    # Exit early if $DOTFILES is not a git repository
+    if ! git -C "$DOTFILES" rev-parse --git-dir >/dev/null 2>&1; then
+        return 1
+    fi
+
+    # Determine target branch from DOTFILES_BRANCH (default to main)
+    target_branch="${DOTFILES_BRANCH:-main}"
+
+    # Get current branch
+    current_branch=$(git -C "$DOTFILES" branch --show-current)
+
+    return 0
+}
+
+# Switch to target branch if needed
+_dotfiles_switch_branch() {
+    if [[ "$current_branch" != "$target_branch" ]]; then
+        echo "Switching to branch ${YELLOW}'$target_branch'${RESET}..."
+
+        # Fetch to ensure we have the latest remote refs
+        git -C "$DOTFILES" fetch origin >/dev/null 2>&1
+
+        # Try to checkout existing local branch, or create tracking branch if it doesn't exist
+        if ! git -C "$DOTFILES" checkout "$target_branch" >/dev/null 2>&1; then
+            # If checkout failed, try to create a new tracking branch
+            if ! git -C "$DOTFILES" checkout -b "$target_branch" "origin/$target_branch" >/dev/null 2>&1; then
+                echo "Failed to switch to branch ${YELLOW}'$target_branch'${RESET}."
+                return 1
+            fi
+        fi
+        # Update current_branch after successful switch and validate
+        local new_current=$(git -C "$DOTFILES" branch --show-current)
+        if [[ "$new_current" == "$target_branch" ]]; then
+            current_branch="$target_branch"
+        else
+            echo "Warning: Branch switch may have failed (expected '$target_branch', got '$new_current')"
+            return 1
+        fi
+    fi
+    echo "On branch ${YELLOW}'$current_branch'${RESET}."
+    echo "Restart your terminal to apply changes."
+    return 0
+}
+
+# Check for updates function
+_dotfiles_check() {
+    # Setup common variables
+    if ! _dotfiles_setup; then
+        return 0
+    fi
+
+    # Detect if the branch is set correctly
+    if [[ "$target_branch" != "$current_branch" ]]; then
+        echo
+        echo "${YELLOW}dotfiles environment mismatch detected.${RESET}"
+        echo
+        echo "The dotfiles directory is on ${YELLOW}'$current_branch'${RESET} branch."
+        echo "The \$DOTFILES_BRANCH environment requests ${YELLOW}'$target_branch'${RESET} branch."
+        echo
+        echo "This may happen when switching branches manually without setting environment to match."
+        echo
+        echo "To fix this, run ${YELLOW}'dotfiles switch <branchname>'${RESET} to set the preferred branch."
+        return 0
+    fi
+
+    if [[ "$1" != "manual" ]]; then
+        # Announce current branch
+        echo "Using dotfiles on the ${YELLOW}$current_branch${RESET} branch."
+        echo "Run ${YELLOW}dotfiles help${RESET} for options."
+    fi
+
+    # Check cache file to avoid frequent network operations
+    local cache_file="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-check-cache"
+
+    # If not manual check, skip fetch if cache is recent
+    if [[ "$1" != "manual" ]]; then
+        # Skip fetch if we've checked recently
+        if [[ -f "$cache_file" ]]; then
+            # Cross-platform file modification time check
+            local cache_time
+            if [[ "$(_get_os_type)" == "Darwin" ]]; then
+                cache_time=$(stat -f %m "$cache_file" 2>/dev/null || echo 0)
+            else
+                cache_time=$(stat -c %Y "$cache_file" 2>/dev/null || echo 0)
+            fi
+            local current_time=$(date +%s)
+            if (( current_time - cache_time < CACHE_DURATION )); then
+                return 0
+            fi
+        fi
+    fi
+
+    # Check if we can reach GitHub (fail silently if offline)
+    if ! _check_connectivity; then
+        return 0
+    fi
+
+    # Fetch latest remote information
+    git -C "$DOTFILES" fetch origin "$target_branch" >/dev/null 2>&1
+
+    # Update cache file to record successful check
+    local cache_dir="$(dirname "$cache_file")"
+    [[ ! -d "$cache_dir" ]] && mkdir -p "$cache_dir"
+    touch "$cache_file"
+
+    # Check if local branch is behind remote (lightweight check first)
+    local commits_behind
+    commits_behind=$(git -C "$DOTFILES" rev-list --count HEAD..origin/"$target_branch" 2>/dev/null)
+    if [[ $? -ne 0 ]] || [[ -z "$commits_behind" ]]; then
+        echo "Error: Failed to check for updates (git rev-list failed)"
+        return 1
+    fi
+
+    # Exit early if up to date (most common case)
+    if [[ "$commits_behind" -eq 0 ]]; then
+        if [[ "$1" == "manual" ]]; then
+            echo "Your dotfiles are on the ${YELLOW}$target_branch${RESET} branch and up to date."
+        fi
+        return 0
+    fi
+
+    # Show what's new and prompt user to run update
+    echo "${YELLOW}Newer dotfiles are available.${RESET}"
+    echo "You are ${YELLOW}${commits_behind}${RESET} commit(s) behind the remote."
+    echo
+    echo "- See changelog at '${YELLOW}https://github.com/dfinster/dotfiles/blob/$target_branch/CHANGELOG.md${RESET}' for details."
+    echo "- Run '${YELLOW}dotfiles update${RESET}' to update."
+}
+
+# Update function
+_dotfiles_update() {
+    # Check for updates first (includes setup)
+    _dotfiles_check manual || return 0
+
+    # Apply the update
+    echo "Updating dotfiles..."
+
+    # Stash any local changes
+    local stash_created=false
+    if ! git -C "$DOTFILES" diff-index --quiet HEAD --; then
+        git -C "$DOTFILES" stash push -m "Auto-stash before dotfiles update $(date)" > /dev/null 2>&1
+        if [[ $? -ne 0 ]]; then
+            echo "Error: Failed to stash local changes (git stash failed)"
+            return 1
+        fi
+        # Mark that we created a stash
+        stash_created=true
+        echo "Local changes stashed."
+    fi
+
+    # Pull latest changes
+    if git -C "$DOTFILES" pull origin "$target_branch" > /dev/null 2>&1; then
+        echo "Dotfiles updated successfully."
+
+        # Update antidote plugins if antidote is available
+        if command -v antidote >/dev/null 2>&1; then
+            echo "Updating antidote plugins..."
+            if antidote update >/dev/null 2>&1; then
+                echo "Antidote plugins updated successfully."
+            else
+                echo "Antidote plugin update failed, but dotfiles update succeeded."
+            fi
+        fi
+    else
+        echo "Update failed."
+        return 1
+    fi
+
+    # Restore stashed changes if we created a stash
+    if [[ "$stash_created" == "true" ]]; then
+        git -C "$DOTFILES" stash pop >/dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            echo "Local stash restored successfully."
+        else
+            echo "Local stash could not be restored; you may need to resolve conflicts manually."
+            echo "You can view the stash with 'git stash list' and apply it manually if needed."
+        fi
+    fi
+
+    echo "Please restart your terminal to apply all changes."
+}
+
+# Switch branch function
+_dotfiles_switch() {
+    local new_branch="$1"
+
+    # Check if branch name was provided
+    if [[ -z "$new_branch" ]]; then
+        echo "Error: Branch name is required"
+        echo "Usage: dotfiles switch <branchname>"
+        return 1
+    fi
+
+    # Setup common variables
+    if ! _dotfiles_setup; then
+        return 1
+    fi
+
+    # Check if branch exists on GitHub (reuse connectivity if already checked)
+    echo "Checking if branch ${YELLOW}'$new_branch'${RESET} exists on GitHub..."
+    if ! _check_connectivity; then
+        echo "Error: Cannot connect to GitHub"
+        return 1
+    fi
+    if ! git -C "$DOTFILES" ls-remote --exit-code --heads origin "$new_branch" >/dev/null 2>&1; then
+        echo "Error: Branch '$new_branch' does not exist on GitHub"
+        return 1
+    fi
+
+    # Update DOTFILES_BRANCH in ~/.zshenv
+    echo "Updating \$DOTFILES_BRANCH to ${YELLOW}'$new_branch'${RESET} in ~/.zshenv..."
+    local zshenv_file="$HOME/.zshenv"
+
+    # Check if file is writable or can be created
+    if [[ -f "$zshenv_file" ]] && [[ ! -w "$zshenv_file" ]]; then
+        echo "Error: Cannot write to $zshenv_file"
+        return 1
+    fi
+
+    if [[ -f "$zshenv_file" ]]; then
+        if grep -q "^export DOTFILES_BRANCH=" "$zshenv_file"; then
+            # Update existing uncommented DOTFILES_BRANCH variable (cross-platform sed)
+            if [[ "$(_get_os_type)" == "Darwin" ]]; then
+                sed -i '' "s/^export DOTFILES_BRANCH=.*/export DOTFILES_BRANCH=\"$new_branch\"/" "$zshenv_file"
+            else
+                sed -i "s/^export DOTFILES_BRANCH=.*/export DOTFILES_BRANCH=\"$new_branch\"/" "$zshenv_file"
+            fi
+        else
+            # Add DOTFILES_BRANCH variable if it doesn't exist or is commented
+            echo "export DOTFILES_BRANCH=\"$new_branch\"" >> "$zshenv_file"
+        fi
+    else
+        # Create ~/.zshenv if it doesn't exist
+        echo "export DOTFILES_BRANCH=\"$new_branch\"" > "$zshenv_file"
+    fi
+
+    # Update the environment variable for this session
+    export DOTFILES_BRANCH="$new_branch"
+    target_branch="$new_branch"
+
+    # Switch to the branch
+    _dotfiles_switch_branch
+}
+
+# Main function
+case "$1" in
+    update)
+        _dotfiles_update
+        ;;
+    # undocumented alias for silent checks in shell startup
+    autocheck)
+        _dotfiles_check
+        ;;
+    check)
+        _dotfiles_check manual
+        ;;
+    switch)
+        _dotfiles_switch "$2"
+        ;;
+    help|--help|-h|"")
+        _dotfiles_help
+        ;;
+    *)
+        echo "Error: Unknown command '$1'"
+        echo
+        _dotfiles_help
+        return 1
+        ;;
+esac
