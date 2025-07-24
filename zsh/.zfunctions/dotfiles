@@ -7,14 +7,13 @@ _dotfiles_help() {
     echo "Usage: dotfiles <command>"
     echo
     echo "Commands:"
-    echo "  ${BLUE}update${RESET}  Apply dotfiles updates from GitHub"
-    echo "  ${BLUE}check${RESET}   Check for available updates"
-    echo "  ${BLUE}switch${RESET}  Switch to a different branch"
-    echo "  ${BLUE}help${RESET}    Show this help message"
+    echo "  update    Apply dotfiles updates from GitHub"
+    echo "  check     Check for available updates"
+    echo "  switch    Switch to a different branch"
+    echo "  help      Show this help message"
     echo
-    echo "Environment Variables (set in ${GREEN}~/.zshenv)${RESET}:"
-    echo "  ${BLUE}DOTFILES_BRANCH${RESET}   Preferred branch to use (default: 'main')"
-    echo "  ${BLUE}DOTFILES_VERBOSE${RESET}  true/false for verbosity (default: 'true')"
+    echo "Set \$DOTFILES_BRANCH in '~/.zshenv' to the preferred branch."
+    echo "The branch defaults to 'main' if \$DOTFILES_BRANCH is not set."
 }
 
 # Global variables for branch information
@@ -23,13 +22,6 @@ current_branch=""
 
 # Constants
 readonly CACHE_DURATION=43200  # 12 hours in seconds
-
-# Color constants
-readonly YELLOW='\033[93m'
-readonly BLUE='\033[94m'
-readonly PURPLE='\033[95m'
-readonly GREEN='\033[92m'
-readonly RESET='\033[0m'
 
 # Cache OS detection
 _os_type=""
@@ -83,7 +75,7 @@ _dotfiles_setup() {
 # Switch to target branch if needed
 _dotfiles_switch_branch() {
     if [[ "$current_branch" != "$target_branch" ]]; then
-        echo "Switching to branch ${YELLOW}'$target_branch'${RESET}..."
+        echo "Switching to branch \033[93m'$target_branch'\033[0m..."
 
         # Fetch to ensure we have the latest remote refs
         git -C "$DOTFILES" fetch origin >/dev/null 2>&1
@@ -92,7 +84,7 @@ _dotfiles_switch_branch() {
         if ! git -C "$DOTFILES" checkout "$target_branch" >/dev/null 2>&1; then
             # If checkout failed, try to create a new tracking branch
             if ! git -C "$DOTFILES" checkout -b "$target_branch" "origin/$target_branch" >/dev/null 2>&1; then
-                echo "Failed to switch to branch ${YELLOW}'$target_branch'${RESET}."
+                echo "Failed to switch to branch \033[93m'$target_branch'\033[0m."
                 return 1
             fi
         fi
@@ -105,7 +97,7 @@ _dotfiles_switch_branch() {
             return 1
         fi
     fi
-    echo "On branch ${YELLOW}'$current_branch'${RESET}."
+    echo "On branch \033[93m'$current_branch'\033[0m."
     echo "Restart your terminal to apply changes."
     return 0
 }
@@ -120,21 +112,21 @@ _dotfiles_check() {
     # Detect if the branch is set correctly
     if [[ "$target_branch" != "$current_branch" ]]; then
         echo
-        echo "${YELLOW}dotfiles environment mismatch detected.${RESET}"
+        echo "\033[93mdotfiles environment mismatch detected.\033[0m"
         echo
-        echo "The dotfiles directory is on ${YELLOW}'$current_branch'${RESET} branch."
-        echo "The \$DOTFILES_BRANCH environment requests ${YELLOW}'$target_branch'${RESET} branch."
+        echo "The dotfiles directory is on \033[93m'$current_branch'\033[0m branch."
+        echo "The \$DOTFILES_BRANCH environment requests \033[93m'$target_branch'\033[0m branch."
         echo
         echo "This may happen when switching branches manually without setting environment to match."
         echo
-        echo "To fix this, run ${YELLOW}'dotfiles switch <branchname>'${RESET} to set the preferred branch."
+        echo "To fix this, run \033[93m'dotfiles switch <branchname>'\033[0m to set the preferred branch."
         return 0
     fi
 
     if [[ "$1" != "manual" ]]; then
         # Announce current branch
-        echo "Using dotfiles on the ${YELLOW}$current_branch${RESET} branch."
-        echo "Run ${YELLOW}dotfiles help${RESET} for options."
+        echo "Using dotfiles on the \033[93m$current_branch\033[0m branch."
+        echo "Run \033[93mdotfiles help\033[0m for options."
     fi
 
     # Check cache file to avoid frequent network operations
@@ -182,17 +174,17 @@ _dotfiles_check() {
     # Exit early if up to date (most common case)
     if [[ "$commits_behind" -eq 0 ]]; then
         if [[ "$1" == "manual" ]]; then
-            echo "Your dotfiles are on the ${YELLOW}$target_branch${RESET} branch and up to date."
+            echo "Your dotfiles are on the \033[93m$target_branch\033[0m branch and up to date."
         fi
         return 0
     fi
 
     # Show what's new and prompt user to run update
-    echo "${YELLOW}Newer dotfiles are available.${RESET}"
-    echo "You are ${YELLOW}${commits_behind}${RESET} commit(s) behind the remote."
+    echo "\033[93mNewer dotfiles are available.\033[0m"
+    echo "You are \033[93m${commits_behind}\033[0m commit(s) behind the remote."
     echo
-    echo "- See changelog at '${YELLOW}https://github.com/dfinster/dotfiles/blob/$target_branch/CHANGELOG.md${RESET}' for details."
-    echo "- Run '${YELLOW}dotfiles update${RESET}' to update."
+    echo "- See changelog at '\033[93mhttps://github.com/dfinster/dotfiles/blob/$target_branch/CHANGELOG.md\033[0m' for details."
+    echo "- Run '\033[93mdotfiles update\033[0m' to update."
 }
 
 # Update function
@@ -265,7 +257,7 @@ _dotfiles_switch() {
     fi
 
     # Check if branch exists on GitHub (reuse connectivity if already checked)
-    echo "Checking if branch ${YELLOW}'$new_branch'${RESET} exists on GitHub..."
+    echo "Checking if branch \033[93m'$new_branch'\033[0m exists on GitHub..."
     if ! _check_connectivity; then
         echo "Error: Cannot connect to GitHub"
         return 1
@@ -276,7 +268,7 @@ _dotfiles_switch() {
     fi
 
     # Update DOTFILES_BRANCH in ~/.zshenv
-    echo "Updating \$DOTFILES_BRANCH to ${YELLOW}'$new_branch'${RESET} in ~/.zshenv..."
+    echo "Updating \$DOTFILES_BRANCH to \033[93m'$new_branch'\033[0m in ~/.zshenv..."
     local zshenv_file="$HOME/.zshenv"
 
     # Check if file is writable or can be created
