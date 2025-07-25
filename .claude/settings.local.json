@@ -4,7 +4,11 @@
       "Bash(find:*)",
       "Bash(ls:*)",
       "Bash(gh issue create:*)",
-      "Bash(git merge-base:*)"
+      "Bash(git merge-base:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh pr view:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh api:*)"
     ],
     "deny": []
   }

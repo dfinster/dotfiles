@@ -7,7 +7,7 @@ _DF_TARGET_BRANCH=""
 _DF_CURRENT_BRANCH=""
 
 # Configuration file path
-readonly _DF_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/dotfiles.config"
+readonly _DF_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/dotfiles.conf"
 
 # Default configuration values
 _DF_DEFAULT_BRANCH="main"
@@ -63,7 +63,7 @@ _df_load_config() {
             # Skip comments and empty lines
             [[ "$line" =~ ^[[:space:]]*# ]] && continue
             [[ -z "$line" ]] && continue
-            
+
             # Only process lines containing '='
             [[ "$line" != *"="* ]] && continue
 
@@ -89,7 +89,7 @@ _df_load_config() {
             esac
         done < "$_DF_CONFIG_FILE"
     fi
-    
+
     # Validate and sanitize loaded configuration values
     _df_validate_config
 }
@@ -103,7 +103,7 @@ _df_validate_config() {
         fi
         _DF_CACHE_DURATION=43200
     fi
-    
+
     # Validate network_timeout (must be positive integer 1-300)
     if ! [[ "$_DF_NETWORK_TIMEOUT" =~ ^[0-9]+$ ]] || (( _DF_NETWORK_TIMEOUT < 1 || _DF_NETWORK_TIMEOUT > 300 )); then
         if [[ "$_DF_NETWORK_TIMEOUT" != "30" ]]; then
@@ -111,7 +111,7 @@ _df_validate_config() {
         fi
         _DF_NETWORK_TIMEOUT=30
     fi
-    
+
     # Validate github_url (must be valid HTTPS URL)
     if ! [[ "$_DF_GITHUB_URL" =~ ^https://[a-zA-Z0-9.-]+/[a-zA-Z0-9._/-]+$ ]]; then
         if [[ "$_DF_GITHUB_URL" != "https://github.com/dfinster/dotfiles" ]]; then
@@ -119,7 +119,7 @@ _df_validate_config() {
         fi
         _DF_GITHUB_URL="https://github.com/dfinster/dotfiles"
     fi
-    
+
     # Validate default_branch (must be valid git branch name)
     if ! [[ "$_DF_DEFAULT_BRANCH" =~ ^[a-zA-Z0-9._/-]+$ ]] || [[ "$_DF_DEFAULT_BRANCH" =~ ^[.-] ]] || [[ "$_DF_DEFAULT_BRANCH" =~ [.-]$ ]] || [[ "$_DF_DEFAULT_BRANCH" == *".."* ]]; then
         if [[ "$_DF_DEFAULT_BRANCH" != "main" ]]; then
@@ -127,7 +127,7 @@ _df_validate_config() {
         fi
         _DF_DEFAULT_BRANCH="main"
     fi
-    
+
     # Validate auto_update_plugins (must be true/false)
     if [[ "$_DF_AUTO_UPDATE_PLUGINS" != "true" && "$_DF_AUTO_UPDATE_PLUGINS" != "false" ]]; then
         if [[ "$_DF_AUTO_UPDATE_PLUGINS" != "true" ]]; then
@@ -491,7 +491,7 @@ _df_update_config_file() {
     # Atomic config update using temporary file
     local temp_file="${_DF_CONFIG_FILE}.tmp.$$"
     local updated=false
-    
+
     # Create new config with updated value
     if [[ -f "$_DF_CONFIG_FILE" ]]; then
         # Process existing config line by line
@@ -504,12 +504,12 @@ _df_update_config_file() {
             fi
         done < "$_DF_CONFIG_FILE" > "$temp_file"
     fi
-    
+
     # Add default_branch if it wasn't found in existing config
     if [[ "$updated" == "false" ]]; then
         echo "default_branch=$new_branch" >> "$temp_file"
     fi
-    
+
     # Atomically replace the original file
     if ! mv "$temp_file" "$_DF_CONFIG_FILE"; then
         # Cleanup on failure
