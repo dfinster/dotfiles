@@ -89,6 +89,52 @@ _df_load_config() {
             esac
         done < "$_DF_CONFIG_FILE"
     fi
+    
+    # Validate and sanitize loaded configuration values
+    _df_validate_config
+}
+
+# Config validation functions with safe fallbacks
+_df_validate_config() {
+    # Validate cache_duration (must be positive integer)
+    if ! [[ "$_DF_CACHE_DURATION" =~ ^[0-9]+$ ]] || (( _DF_CACHE_DURATION <= 0 )); then
+        if [[ "$_DF_CACHE_DURATION" != "43200" ]]; then
+            echo -e "${_DF_YELLOW}Warning:${_DF_RESET} Invalid cache_duration '$_DF_CACHE_DURATION', using default 43200" >&2
+        fi
+        _DF_CACHE_DURATION=43200
+    fi
+    
+    # Validate network_timeout (must be positive integer 1-300)
+    if ! [[ "$_DF_NETWORK_TIMEOUT" =~ ^[0-9]+$ ]] || (( _DF_NETWORK_TIMEOUT < 1 || _DF_NETWORK_TIMEOUT > 300 )); then
+        if [[ "$_DF_NETWORK_TIMEOUT" != "30" ]]; then
+            echo -e "${_DF_YELLOW}Warning:${_DF_RESET} Invalid network_timeout '$_DF_NETWORK_TIMEOUT', using default 30" >&2
+        fi
+        _DF_NETWORK_TIMEOUT=30
+    fi
+    
+    # Validate github_url (must be valid HTTPS URL)
+    if ! [[ "$_DF_GITHUB_URL" =~ ^https://[a-zA-Z0-9.-]+/[a-zA-Z0-9._/-]+$ ]]; then
+        if [[ "$_DF_GITHUB_URL" != "https://github.com/dfinster/dotfiles" ]]; then
+            echo -e "${_DF_YELLOW}Warning:${_DF_RESET} Invalid github_url '$_DF_GITHUB_URL', using default" >&2
+        fi
+        _DF_GITHUB_URL="https://github.com/dfinster/dotfiles"
+    fi
+    
+    # Validate default_branch (must be valid git branch name)
+    if ! [[ "$_DF_DEFAULT_BRANCH" =~ ^[a-zA-Z0-9._/-]+$ ]] || [[ "$_DF_DEFAULT_BRANCH" =~ ^[.-] ]] || [[ "$_DF_DEFAULT_BRANCH" =~ [.-]$ ]] || [[ "$_DF_DEFAULT_BRANCH" == *".."* ]]; then
+        if [[ "$_DF_DEFAULT_BRANCH" != "main" ]]; then
+            echo -e "${_DF_YELLOW}Warning:${_DF_RESET} Invalid default_branch '$_DF_DEFAULT_BRANCH', using default 'main'" >&2
+        fi
+        _DF_DEFAULT_BRANCH="main"
+    fi
+    
+    # Validate auto_update_plugins (must be true/false)
+    if [[ "$_DF_AUTO_UPDATE_PLUGINS" != "true" && "$_DF_AUTO_UPDATE_PLUGINS" != "false" ]]; then
+        if [[ "$_DF_AUTO_UPDATE_PLUGINS" != "true" ]]; then
+            echo -e "${_DF_YELLOW}Warning:${_DF_RESET} Invalid auto_update_plugins '$_DF_AUTO_UPDATE_PLUGINS', using default 'true'" >&2
+        fi
+        _DF_AUTO_UPDATE_PLUGINS="true"
+    fi
 }
 
 # Show help function
