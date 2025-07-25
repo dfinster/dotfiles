@@ -50,6 +50,12 @@ $ eval "$(/opt/homebrew/bin/brew shellenv)"
 $ brew install atuin direnv eza pyenv
 ```
 
+### Install OrbStack (optional)
+
+OrbStack is a lightweight container development environment for macOS. It provides a fast and efficient way to run containers on macOS.
+
+It's preferred to install Orbstack _**before**_ dotfiles. If you install Orbstack _**after**_ dotfiles, it will add itself to `zsh/.zprofile` automatically. You can revert this, because dotfiles already has Orbstack support built-in.
+
 ### Install Visual Studio Code
 
 Dotfiles assumes that VS Code is the primary code editor. If you prefer another editor, you should consider forking this repo and modifying it to suit your needs.
