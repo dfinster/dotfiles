@@ -48,3 +48,11 @@ Personal dotfiles repository managing macOS shell environment with modular Zsh +
 - **Homebrew**: Auto-configured via `zsh/.zshrc.d/brew.zsh`
 
 No build/test commands - shell environment configuration only.
+
+## Documentation Policy
+
+Documentation is **allowed and encouraged** in this project. Feel free to:
+- Create or update .md files as needed
+- Add README files for new components
+- Write inline code documentation
+- Update existing documentation to reflect changes
