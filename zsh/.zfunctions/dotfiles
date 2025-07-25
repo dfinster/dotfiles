@@ -9,6 +9,9 @@ _DF_CURRENT_BRANCH=""
 # Configuration file path
 readonly _DF_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/dotfiles.conf"
 
+# Cache file path
+readonly _DF_CACHE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/.last-check"
+
 # Default configuration values
 _DF_DEFAULT_BRANCH="main"
 _DF_CACHE_DURATION=43200  # 12 hours in seconds
@@ -275,11 +278,9 @@ _df_check_cache_validity() {
         return 1  # Cache invalid, continue processing
     fi
 
-    local cache_file="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/last-check-datetime"
-
     # Skip fetch if we've checked recently
-    if [[ -f "$cache_file" ]]; then
-        local cache_time=$(_df_get_file_mtime "$cache_file")
+    if [[ -f "$_DF_CACHE_FILE" ]]; then
+        local cache_time=$(_df_get_file_mtime "$_DF_CACHE_FILE")
         local current_time=$(date +%s)
         if (( current_time - cache_time < _DF_CACHE_DURATION )); then
             return 0  # Cache valid, skip remote check
@@ -302,10 +303,7 @@ _df_perform_remote_check() {
     _df_git_quiet fetch origin "$_DF_TARGET_BRANCH"
 
     # Update cache file to record successful check
-    local cache_file="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/last-check-datetime"
-    local cache_dir="${cache_file%/*}"
-    mkdir -p "$cache_dir" 2>/dev/null || true
-    touch "$cache_file"
+    touch "$_DF_CACHE_FILE"
 
     # Check if local branch is behind remote
     local commits_behind
