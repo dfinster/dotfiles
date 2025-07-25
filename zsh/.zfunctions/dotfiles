@@ -442,13 +442,34 @@ _df_update_config_file() {
         return 1
     fi
 
-    # Update the default_branch setting
-    if grep -q "^default_branch=" "$_DF_CONFIG_FILE"; then
-        # Update existing setting
-        _df_sed_inplace "s|^default_branch=.*|default_branch=$new_branch|" "$_DF_CONFIG_FILE"
-    else
-        # Add setting if it doesn't exist
-        echo "default_branch=$new_branch" >> "$_DF_CONFIG_FILE"
+    # Atomic config update using temporary file
+    local temp_file="${_DF_CONFIG_FILE}.tmp.$$"
+    local updated=false
+    
+    # Create new config with updated value
+    if [[ -f "$_DF_CONFIG_FILE" ]]; then
+        # Process existing config line by line
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            if [[ "$line" =~ ^[[:space:]]*default_branch[[:space:]]*= ]]; then
+                echo "default_branch=$new_branch"
+                updated=true
+            else
+                echo "$line"
+            fi
+        done < "$_DF_CONFIG_FILE" > "$temp_file"
+    fi
+    
+    # Add default_branch if it wasn't found in existing config
+    if [[ "$updated" == "false" ]]; then
+        echo "default_branch=$new_branch" >> "$temp_file"
+    fi
+    
+    # Atomically replace the original file
+    if ! mv "$temp_file" "$_DF_CONFIG_FILE"; then
+        # Cleanup on failure
+        rm -f "$temp_file" 2>/dev/null || true
+        echo -e "${_DF_RED}Error:${_DF_RESET} Failed to update config file" >&2
+        return 1
     fi
 
     # Update the variables for this session
