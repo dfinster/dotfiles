@@ -2,52 +2,146 @@
 #
 # dotfiles - Manage dotfiles repository
 
+# Function-scoped state variables with clear prefixes
+_DF_TARGET_BRANCH=""
+_DF_CURRENT_BRANCH=""
+
+# Configuration file path
+readonly _DF_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/dotfiles.config"
+
+# Default configuration values
+_DF_DEFAULT_BRANCH="main"
+_DF_CACHE_DURATION=43200  # 12 hours in seconds
+_DF_NETWORK_TIMEOUT=30
+_DF_AUTO_UPDATE_PLUGINS=true
+_DF_GITHUB_URL="https://github.com/dfinster/dotfiles"
+
+# Color constants
+readonly _DF_RED='\033[91m'
+readonly _DF_YELLOW='\033[93m'
+readonly _DF_GREEN='\033[92m'
+readonly _DF_BLUE='\033[94m'
+readonly _DF_RESET='\033[0m'
+
+# Create configuration file template if it doesn't exist
+_df_create_config_template() {
+
+    if [[ ! -f "$_DF_CONFIG_FILE" ]]; then
+        cat > "$_DF_CONFIG_FILE" <<'EOF'
+# Dotfiles Configuration
+# This file is not tracked in git and contains user-specific settings
+
+# Default branch to use
+default_branch=main
+
+# Cache duration in seconds (12 hours = 43200)
+cache_duration=43200
+
+# Network timeout for git operations in seconds
+network_timeout=30
+
+# Auto-update antidote plugins during dotfiles update
+auto_update_plugins=true
+
+# GitHub repository URL
+github_url=https://github.com/dfinster/dotfiles
+EOF
+        echo -e "${_DF_GREEN}Info:${_DF_RESET} Created config template at ${_DF_BLUE}$_DF_CONFIG_FILE${_DF_RESET}"
+        echo -e "${_DF_GREEN}Info:${_DF_RESET} Edit this file to customize your dotfiles settings"
+    fi
+}
+
+# Load configuration from file and environment variables
+_df_load_config() {
+
+    # Create config template if it doesn't exist
+    _df_create_config_template
+
+    # Load from config file if it exists
+    if [[ -f "$_DF_CONFIG_FILE" ]]; then
+        while IFS='=' read -r key value || [[ -n "$key" ]]; do
+            # Skip comments and empty lines
+            [[ "$key" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "$key" ]] && continue
+
+            # Trim whitespace from key and value
+            key="${key#"${key%%[![:space:]]*}"}"    # trim leading
+            key="${key%"${key##*[![:space:]]}"}"    # trim trailing
+            value="${value#"${value%%[![:space:]]*}"}"  # trim leading
+            value="${value%"${value##*[![:space:]]}"}"  # trim trailing
+
+            case "$key" in
+                default_branch) _DF_DEFAULT_BRANCH="$value" ;;
+                cache_duration) _DF_CACHE_DURATION="$value" ;;
+                network_timeout) _DF_NETWORK_TIMEOUT="$value" ;;
+                auto_update_plugins) _DF_AUTO_UPDATE_PLUGINS="$value" ;;
+                github_url) _DF_GITHUB_URL="$value" ;;
+            esac
+        done < "$_DF_CONFIG_FILE"
+    fi
+}
+
 # Show help function
-_dotfiles_help() {
-    echo "Usage: dotfiles <command>"
+_df_help() {
+    echo -e "Usage: ${_DF_BLUE}dotfiles <command>${_DF_RESET}"
     echo
     echo "Commands:"
-    echo "  update    Apply dotfiles updates from GitHub"
-    echo "  check     Check for available updates"
-    echo "  switch    Switch to a different branch"
-    echo "  help      Show this help message"
+    echo -e "  ${_DF_BLUE}update${_DF_RESET}               Apply dotfiles updates from GitHub"
+    echo -e "  ${_DF_BLUE}check${_DF_RESET}                Check for available updates"
+    echo -e "  ${_DF_BLUE}branch <branchname>${_DF_RESET}  Set the preferred branch"
+    echo -e "  ${_DF_BLUE}help${_DF_RESET}                 Show this help message"
     echo
-    echo "Set \$DOTFILES_BRANCH in '~/.zshenv' to the preferred branch."
-    echo "The branch defaults to 'main' if \$DOTFILES_BRANCH is not set."
+    echo -e "Configuration is stored in ${_DF_BLUE}'$_DF_CONFIG_FILE'${_DF_RESET}."
 }
 
-# Global variables for branch information
-target_branch=""
-current_branch=""
-
-# Constants
-readonly CACHE_DURATION=43200  # 12 hours in seconds
-
-# Cache OS detection
-_os_type=""
-_get_os_type() {
-    if [[ -z "$_os_type" ]]; then
-        _os_type="$(uname)"
-    fi
-    echo "$_os_type"
+# Git command wrappers to eliminate repetition
+_df_git() {
+    git -C "$DOTFILES" "$@"
 }
 
-# Cache connectivity check
-_connectivity_checked=false
-_check_connectivity() {
-    if [[ "$_connectivity_checked" == "false" ]]; then
-        if git -C "$DOTFILES" ls-remote origin >/dev/null 2>&1; then
-            _connectivity_checked=true
-            return 0
-        else
-            return 1
-        fi
+_df_git_quiet() {
+    _df_git "$@" >/dev/null 2>&1
+}
+
+
+# Get file modification time (cross-platform)
+_df_get_file_mtime() {
+    local file="$1"
+    if is-macos; then
+        stat -f %m "$file" 2>/dev/null || echo 0
+    else
+        stat -c %Y "$file" 2>/dev/null || echo 0
     fi
-    return 0
+}
+
+# In-place sed replacement (cross-platform)
+_df_sed_inplace() {
+    local pattern="$1"
+    local file="$2"
+    if is-macos; then
+        sed -i '' "$pattern" "$file"
+    else
+        sed -i "$pattern" "$file"
+    fi
+}
+
+
+# Temporary cleanup function - remove in next release
+_df_cleanup_legacy_cache() {
+    local legacy_cache="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-check-cache"
+    if [[ -f "$legacy_cache" ]]; then
+        rm -f "$legacy_cache" 2>/dev/null || true
+    fi
 }
 
 # Common setup function
-_dotfiles_setup() {
+_df_setup() {
+    # Load configuration first
+    _df_load_config
+
+    # Clean up legacy cache file (remove in next release)
+    _df_cleanup_legacy_cache
+
     # Exit early if DOTFILES environment variable is not set
     if [[ -z "$DOTFILES" ]]; then
         return 1
@@ -59,271 +153,352 @@ _dotfiles_setup() {
     fi
 
     # Exit early if $DOTFILES is not a git repository
-    if ! git -C "$DOTFILES" rev-parse --git-dir >/dev/null 2>&1; then
+    if ! _df_git_quiet rev-parse --git-dir; then
         return 1
     fi
 
-    # Determine target branch from DOTFILES_BRANCH (default to main)
-    target_branch="${DOTFILES_BRANCH:-main}"
+    # Determine target branch from config (with env var override)
+    _DF_TARGET_BRANCH="$_DF_DEFAULT_BRANCH"
 
     # Get current branch
-    current_branch=$(git -C "$DOTFILES" branch --show-current)
+    _DF_CURRENT_BRANCH=$(_df_git branch --show-current)
 
     return 0
 }
 
 # Switch to target branch if needed
-_dotfiles_switch_branch() {
-    if [[ "$current_branch" != "$target_branch" ]]; then
-        echo "Switching to branch \033[93m'$target_branch'\033[0m..."
+_df_switch_branch() {
+    if [[ "$_DF_CURRENT_BRANCH" != "$_DF_TARGET_BRANCH" ]]; then
+        echo -e "${_DF_GREEN}Info:${_DF_RESET} Switching to branch ${_DF_BLUE}'$_DF_TARGET_BRANCH'${_DF_RESET}..."
 
         # Fetch to ensure we have the latest remote refs
-        git -C "$DOTFILES" fetch origin >/dev/null 2>&1
+        _df_git_quiet fetch origin
 
         # Try to checkout existing local branch, or create tracking branch if it doesn't exist
-        if ! git -C "$DOTFILES" checkout "$target_branch" >/dev/null 2>&1; then
+        if ! _df_git_quiet checkout "$_DF_TARGET_BRANCH"; then
             # If checkout failed, try to create a new tracking branch
-            if ! git -C "$DOTFILES" checkout -b "$target_branch" "origin/$target_branch" >/dev/null 2>&1; then
-                echo "Failed to switch to branch \033[93m'$target_branch'\033[0m."
+            if ! _df_git_quiet checkout -b "$_DF_TARGET_BRANCH" "origin/$_DF_TARGET_BRANCH"; then
+                echo -e "${_DF_RED}Error:${_DF_RESET} Failed to switch to branch ${_DF_BLUE}'$_DF_TARGET_BRANCH'${_DF_RESET}." >&2
                 return 1
             fi
         fi
-        # Update current_branch after successful switch and validate
-        local new_current=$(git -C "$DOTFILES" branch --show-current)
-        if [[ "$new_current" == "$target_branch" ]]; then
-            current_branch="$target_branch"
+        # Update _DF_CURRENT_BRANCH after successful switch and validate
+        local new_current=$(_df_git branch --show-current)
+        if [[ "$new_current" == "$_DF_TARGET_BRANCH" ]]; then
+            _DF_CURRENT_BRANCH="$_DF_TARGET_BRANCH"
         else
-            echo "Warning: Branch switch may have failed (expected '$target_branch', got '$new_current')"
+            echo -e "${_DF_YELLOW}Warning:${_DF_RESET} Branch switch may have failed (expected '$_DF_TARGET_BRANCH', got '$new_current')" >&2
             return 1
         fi
     fi
-    echo "On branch \033[93m'$current_branch'\033[0m."
-    echo "Restart your terminal to apply changes."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} On branch ${_DF_BLUE}'$_DF_CURRENT_BRANCH'${_DF_RESET}."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} Restart your terminal to apply changes."
     return 0
 }
 
-# Check for updates function
-_dotfiles_check() {
-    # Setup common variables
-    if ! _dotfiles_setup; then
-        return 0
+# Handle branch mismatch between environment and git repository
+_df_handle_branch_mismatch() {
+    if [[ "$_DF_TARGET_BRANCH" == "$_DF_CURRENT_BRANCH" ]]; then
+        return 1  # No mismatch, continue processing
     fi
 
-    # Detect if the branch is set correctly
-    if [[ "$target_branch" != "$current_branch" ]]; then
-        echo
-        echo "\033[93mdotfiles environment mismatch detected.\033[0m"
-        echo
-        echo "The dotfiles directory is on \033[93m'$current_branch'\033[0m branch."
-        echo "The \$DOTFILES_BRANCH environment requests \033[93m'$target_branch'\033[0m branch."
-        echo
-        echo "This may happen when switching branches manually without setting environment to match."
-        echo
-        echo "To fix this, run \033[93m'dotfiles switch <branchname>'\033[0m to set the preferred branch."
-        return 0
+    echo
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} dotfiles configuration mismatch detected."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} dotfiles is on the ${_DF_BLUE}'$_DF_CURRENT_BRANCH'${_DF_RESET} branch."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} dotfiles config is set to the ${_DF_BLUE}'$_DF_TARGET_BRANCH'${_DF_RESET} branch."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} Please use ${_DF_BLUE}'dotfiles branch <branchname>'${_DF_RESET} to choose a branch."
+    return 0  # Mismatch handled, stop processing
+}
+
+# Check if cache is recent enough to skip remote check
+_df_check_cache_validity() {
+    local check_type="$1"
+
+    # Manual checks always bypass cache
+    if [[ "$check_type" == "manual" ]]; then
+        return 1  # Cache invalid, continue processing
     fi
 
-    if [[ "$1" != "manual" ]]; then
-        # Announce current branch
-        echo "Using dotfiles on the \033[93m$current_branch\033[0m branch."
-        echo "Run \033[93mdotfiles help\033[0m for options."
-    fi
+    local cache_file="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/last-check-datetime"
 
-    # Check cache file to avoid frequent network operations
-    local cache_file="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-check-cache"
-
-    # If not manual check, skip fetch if cache is recent
-    if [[ "$1" != "manual" ]]; then
-        # Skip fetch if we've checked recently
-        if [[ -f "$cache_file" ]]; then
-            # Cross-platform file modification time check
-            local cache_time
-            if [[ "$(_get_os_type)" == "Darwin" ]]; then
-                cache_time=$(stat -f %m "$cache_file" 2>/dev/null || echo 0)
-            else
-                cache_time=$(stat -c %Y "$cache_file" 2>/dev/null || echo 0)
-            fi
-            local current_time=$(date +%s)
-            if (( current_time - cache_time < CACHE_DURATION )); then
-                return 0
-            fi
+    # Skip fetch if we've checked recently
+    if [[ -f "$cache_file" ]]; then
+        local cache_time=$(_df_get_file_mtime "$cache_file")
+        local current_time=$(date +%s)
+        if (( current_time - cache_time < _DF_CACHE_DURATION )); then
+            return 0  # Cache valid, skip remote check
         fi
     fi
 
+    return 1  # Cache invalid, continue processing
+}
+
+# Perform remote update check and display results
+_df_perform_remote_check() {
+    local check_type="$1"
+
     # Check if we can reach GitHub (fail silently if offline)
-    if ! _check_connectivity; then
+    if ! _df_git_quiet ls-remote origin; then
         return 0
     fi
 
     # Fetch latest remote information
-    git -C "$DOTFILES" fetch origin "$target_branch" >/dev/null 2>&1
+    _df_git_quiet fetch origin "$_DF_TARGET_BRANCH"
 
     # Update cache file to record successful check
-    local cache_dir="$(dirname "$cache_file")"
-    [[ ! -d "$cache_dir" ]] && mkdir -p "$cache_dir"
+    local cache_file="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/last-check-datetime"
+    local cache_dir="${cache_file%/*}"
+    mkdir -p "$cache_dir" 2>/dev/null || true
     touch "$cache_file"
 
-    # Check if local branch is behind remote (lightweight check first)
+    # Check if local branch is behind remote
     local commits_behind
-    commits_behind=$(git -C "$DOTFILES" rev-list --count HEAD..origin/"$target_branch" 2>/dev/null)
-    if [[ $? -ne 0 ]] || [[ -z "$commits_behind" ]]; then
-        echo "Error: Failed to check for updates (git rev-list failed)"
+    if ! commits_behind=$(_df_git rev-list --count HEAD..origin/"$_DF_TARGET_BRANCH" 2>/dev/null) || [[ -z "$commits_behind" ]]; then
+        echo -e "${_DF_RED}Error:${_DF_RESET} Failed to check for updates (git rev-list failed)" >&2
         return 1
     fi
 
     # Exit early if up to date (most common case)
     if [[ "$commits_behind" -eq 0 ]]; then
-        if [[ "$1" == "manual" ]]; then
-            echo "Your dotfiles are on the \033[93m$target_branch\033[0m branch and up to date."
+        if [[ "$check_type" == "manual" ]]; then
+            echo -e "${_DF_GREEN}Info:${_DF_RESET} Your dotfiles are on the ${_DF_BLUE}$_DF_TARGET_BRANCH${_DF_RESET} branch and up to date."
         fi
         return 0
     fi
 
     # Show what's new and prompt user to run update
-    echo "\033[93mNewer dotfiles are available.\033[0m"
-    echo "You are \033[93m${commits_behind}\033[0m commit(s) behind the remote."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} Newer dotfiles are available."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} You are ${_DF_BLUE}${commits_behind}${_DF_RESET} commit(s) behind the remote."
     echo
-    echo "- See changelog at '\033[93mhttps://github.com/dfinster/dotfiles/blob/$target_branch/CHANGELOG.md\033[0m' for details."
-    echo "- Run '\033[93mdotfiles update\033[0m' to update."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} - See changelog at '${_DF_BLUE}$_DF_GITHUB_URL/blob/$_DF_TARGET_BRANCH/CHANGELOG.md${_DF_RESET}' for details."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} - Run '${_DF_BLUE}dotfiles update${_DF_RESET}' to update."
+}
+
+# Check for updates function
+_df_check() {
+    # Setup common variables
+    if ! _df_setup; then
+        return 0
+    fi
+
+    # Handle branch mismatch between environment and repository
+    if _df_handle_branch_mismatch; then
+        return 0
+    fi
+
+    # Display info for non-manual checks
+    if [[ "$1" != "manual" ]]; then
+        echo -e "${_DF_GREEN}Info:${_DF_RESET} Using dotfiles on the ${_DF_BLUE}$_DF_CURRENT_BRANCH${_DF_RESET} branch."
+        echo -e "${_DF_GREEN}Info:${_DF_RESET} Run ${_DF_BLUE}dotfiles help${_DF_RESET} for options."
+    fi
+
+    # Check cache validity and skip if recent
+    if _df_check_cache_validity "$1"; then
+        return 0
+    fi
+
+    # Perform remote check and display results
+    _df_perform_remote_check "$1"
+}
+
+# Stash local changes before update
+_df_stash_local_changes() {
+    # Check if there are any local changes
+    if _df_git_quiet diff-index --quiet HEAD --; then
+        return 1  # No changes to stash
+    fi
+
+    # Attempt to stash changes
+    if ! _df_git_quiet stash push -m "Auto-stash before dotfiles update $(date)"; then
+        echo -e "${_DF_RED}Error:${_DF_RESET} Failed to stash local changes (git stash failed)" >&2
+        return 1
+    fi
+
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} Local changes stashed."
+    return 0  # Stash created successfully
+}
+
+# Perform git pull and update plugins
+_df_perform_update() {
+    # Pull latest changes from remote
+    if ! _df_git_quiet pull origin "$_DF_TARGET_BRANCH"; then
+        echo -e "${_DF_RED}Error:${_DF_RESET} Update failed" >&2
+        return 1
+    fi
+
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} Dotfiles updated successfully."
+
+    # Update antidote plugins if enabled and available
+    if [[ "$_DF_AUTO_UPDATE_PLUGINS" == "true" ]] && command -v antidote >/dev/null 2>&1; then
+        echo -e "${_DF_GREEN}Info:${_DF_RESET} Updating antidote plugins..."
+        if antidote update >/dev/null 2>&1; then
+            echo -e "${_DF_GREEN}Info:${_DF_RESET} Antidote plugins updated successfully."
+        else
+            echo -e "${_DF_YELLOW}Warning:${_DF_RESET} Antidote plugin update failed, but dotfiles update succeeded."
+        fi
+    fi
+
+    return 0
+}
+
+# Restore previously stashed changes
+_df_restore_stash() {
+    if _df_git_quiet stash pop; then
+        echo -e "${_DF_GREEN}Info:${_DF_RESET} Local stash restored successfully."
+    else
+        echo -e "${_DF_YELLOW}Warning:${_DF_RESET} Local stash could not be restored; you may need to resolve conflicts manually."
+        echo -e "${_DF_YELLOW}Warning:${_DF_RESET} You can view the stash with 'git stash list' and apply it manually if needed."
+    fi
 }
 
 # Update function
-_dotfiles_update() {
+_df_update() {
     # Check for updates first (includes setup)
-    _dotfiles_check manual || return 0
+    _df_check manual || return 0
 
-    # Apply the update
-    echo "Updating dotfiles..."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} Updating dotfiles..."
 
     # Stash any local changes
     local stash_created=false
-    if ! git -C "$DOTFILES" diff-index --quiet HEAD --; then
-        git -C "$DOTFILES" stash push -m "Auto-stash before dotfiles update $(date)" > /dev/null 2>&1
-        if [[ $? -ne 0 ]]; then
-            echo "Error: Failed to stash local changes (git stash failed)"
-            return 1
-        fi
-        # Mark that we created a stash
+    if _df_stash_local_changes; then
         stash_created=true
-        echo "Local changes stashed."
     fi
 
-    # Pull latest changes
-    if git -C "$DOTFILES" pull origin "$target_branch" > /dev/null 2>&1; then
-        echo "Dotfiles updated successfully."
-
-        # Update antidote plugins if antidote is available
-        if command -v antidote >/dev/null 2>&1; then
-            echo "Updating antidote plugins..."
-            if antidote update >/dev/null 2>&1; then
-                echo "Antidote plugins updated successfully."
-            else
-                echo "Antidote plugin update failed, but dotfiles update succeeded."
-            fi
-        fi
-    else
-        echo "Update failed."
+    # Perform the actual update
+    if ! _df_perform_update; then
         return 1
     fi
 
     # Restore stashed changes if we created a stash
     if [[ "$stash_created" == "true" ]]; then
-        git -C "$DOTFILES" stash pop >/dev/null 2>&1
-        if [[ $? -eq 0 ]]; then
-            echo "Local stash restored successfully."
-        else
-            echo "Local stash could not be restored; you may need to resolve conflicts manually."
-            echo "You can view the stash with 'git stash list' and apply it manually if needed."
-        fi
+        _df_restore_stash
     fi
 
-    echo "Please restart your terminal to apply all changes."
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} Please restart your terminal to apply all changes."
 }
 
-# Switch branch function
-_dotfiles_switch() {
+# Validate branch name to prevent command injection
+_df_validate_branch_name() {
+    local branch="$1"
+
+    # Check for empty input
+    if [[ -z "$branch" ]]; then
+        echo -e "${_DF_RED}Error:${_DF_RESET} Branch name is required" >&2
+        return 1
+    fi
+
+    # Prevent shell metacharacters that could cause command injection
+    if [[ "$branch" =~ [\$\`\;\|\&\<\>\(\)] ]]; then
+        echo -e "${_DF_RED}Error:${_DF_RESET} Branch name contains invalid characters" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# Verify branch exists on remote GitHub repository
+_df_verify_remote_branch() {
+    local branch="$1"
+
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} Checking if branch ${_DF_BLUE}'$branch'${_DF_RESET} exists on GitHub..."
+
+    # Check network connectivity
+    if ! _df_git_quiet ls-remote origin; then
+        echo -e "${_DF_RED}Error:${_DF_RESET} Cannot connect to GitHub" >&2
+        return 1
+    fi
+
+    # Check if branch exists
+    if ! _df_git_quiet ls-remote --exit-code --heads origin "$branch"; then
+        echo -e "${_DF_RED}Error:${_DF_RESET} Branch '$branch' does not exist on GitHub" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# Update default branch in configuration file
+_df_update_config_file() {
     local new_branch="$1"
 
-    # Check if branch name was provided
-    if [[ -z "$new_branch" ]]; then
-        echo "Error: Branch name is required"
-        echo "Usage: dotfiles switch <branchname>"
+    echo -e "${_DF_GREEN}Info:${_DF_RESET} Updating default branch to ${_DF_BLUE}'$new_branch'${_DF_RESET} in config file..."
+
+    # Ensure config file exists
+    _df_create_config_template
+
+    # Check if file is writable
+    if [[ ! -w "$_DF_CONFIG_FILE" ]]; then
+        echo -e "${_DF_RED}Error:${_DF_RESET} Cannot write to $_DF_CONFIG_FILE" >&2
+        return 1
+    fi
+
+    # Update the default_branch setting
+    if grep -q "^default_branch=" "$_DF_CONFIG_FILE"; then
+        # Update existing setting
+        _df_sed_inplace "s|^default_branch=.*|default_branch=$new_branch|" "$_DF_CONFIG_FILE"
+    else
+        # Add setting if it doesn't exist
+        echo "default_branch=$new_branch" >> "$_DF_CONFIG_FILE"
+    fi
+
+    # Update the variables for this session
+    _DF_DEFAULT_BRANCH="$new_branch"
+    _DF_TARGET_BRANCH="$new_branch"
+
+    return 0
+}
+
+# Set branch function
+_df_branch() {
+    local new_branch="$1"
+
+    # Validate branch name to prevent command injection
+    if ! _df_validate_branch_name "$new_branch"; then
+        echo "Usage: dotfiles branch <branchname>"
         return 1
     fi
 
     # Setup common variables
-    if ! _dotfiles_setup; then
+    if ! _df_setup; then
         return 1
     fi
 
-    # Check if branch exists on GitHub (reuse connectivity if already checked)
-    echo "Checking if branch \033[93m'$new_branch'\033[0m exists on GitHub..."
-    if ! _check_connectivity; then
-        echo "Error: Cannot connect to GitHub"
-        return 1
-    fi
-    if ! git -C "$DOTFILES" ls-remote --exit-code --heads origin "$new_branch" >/dev/null 2>&1; then
-        echo "Error: Branch '$new_branch' does not exist on GitHub"
+    # Verify branch exists on remote
+    if ! _df_verify_remote_branch "$new_branch"; then
         return 1
     fi
 
-    # Update DOTFILES_BRANCH in ~/.zshenv
-    echo "Updating \$DOTFILES_BRANCH to \033[93m'$new_branch'\033[0m in ~/.zshenv..."
-    local zshenv_file="$HOME/.zshenv"
-
-    # Check if file is writable or can be created
-    if [[ -f "$zshenv_file" ]] && [[ ! -w "$zshenv_file" ]]; then
-        echo "Error: Cannot write to $zshenv_file"
+    # Update configuration file
+    if ! _df_update_config_file "$new_branch"; then
         return 1
     fi
-
-    if [[ -f "$zshenv_file" ]]; then
-        if grep -q "^export DOTFILES_BRANCH=" "$zshenv_file"; then
-            # Update existing uncommented DOTFILES_BRANCH variable (cross-platform sed)
-            if [[ "$(_get_os_type)" == "Darwin" ]]; then
-                sed -i '' "s/^export DOTFILES_BRANCH=.*/export DOTFILES_BRANCH=\"$new_branch\"/" "$zshenv_file"
-            else
-                sed -i "s/^export DOTFILES_BRANCH=.*/export DOTFILES_BRANCH=\"$new_branch\"/" "$zshenv_file"
-            fi
-        else
-            # Add DOTFILES_BRANCH variable if it doesn't exist or is commented
-            echo "export DOTFILES_BRANCH=\"$new_branch\"" >> "$zshenv_file"
-        fi
-    else
-        # Create ~/.zshenv if it doesn't exist
-        echo "export DOTFILES_BRANCH=\"$new_branch\"" > "$zshenv_file"
-    fi
-
-    # Update the environment variable for this session
-    export DOTFILES_BRANCH="$new_branch"
-    target_branch="$new_branch"
 
     # Switch to the branch
-    _dotfiles_switch_branch
+    _df_switch_branch
 }
 
 # Main function
 case "$1" in
     update)
-        _dotfiles_update
+        _df_update
         ;;
     # undocumented alias for silent checks in shell startup
     autocheck)
-        _dotfiles_check
+        _df_check
         ;;
     check)
-        _dotfiles_check manual
+        _df_check manual
         ;;
-    switch)
-        _dotfiles_switch "$2"
+    branch)
+        _df_branch "$2"
         ;;
     help|--help|-h|"")
-        _dotfiles_help
+        _df_help
         ;;
     *)
-        echo "Error: Unknown command '$1'"
+        echo -e "${_DF_RED}Error:${_DF_RESET} Unknown command '$1'" >&2
         echo
-        _dotfiles_help
+        _df_help
         return 1
         ;;
 esac

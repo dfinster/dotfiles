@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(gh issue create:*)",
+      "Bash(git merge-base:*)"
     ],
     "deny": []
   }
