@@ -255,7 +255,7 @@ _df_switch_branch() {
 # Handle branch mismatch between environment and git repository
 _df_handle_branch_mismatch() {
     if [[ "$_DF_TARGET_BRANCH" == "$_DF_CURRENT_BRANCH" ]]; then
-        return 1  # No mismatch, continue processing
+        return 0  # No mismatch, continue processing (success)
     fi
 
     echo
@@ -263,7 +263,7 @@ _df_handle_branch_mismatch() {
     echo -e "${_DF_GREEN}Info:${_DF_RESET} dotfiles is on the ${_DF_BLUE}'$_DF_CURRENT_BRANCH'${_DF_RESET} branch."
     echo -e "${_DF_GREEN}Info:${_DF_RESET} dotfiles config is set to the ${_DF_BLUE}'$_DF_TARGET_BRANCH'${_DF_RESET} branch."
     echo -e "${_DF_GREEN}Info:${_DF_RESET} Please use ${_DF_BLUE}'dotfiles branch <branchname>'${_DF_RESET} to choose a branch."
-    return 0  # Mismatch handled, stop processing
+    return 1  # Mismatch detected, stop processing (failure)
 }
 
 # Check if cache is recent enough to skip remote check
@@ -338,7 +338,7 @@ _df_check() {
     fi
 
     # Handle branch mismatch between environment and repository
-    if _df_handle_branch_mismatch; then
+    if ! _df_handle_branch_mismatch; then
         return 0
     fi
 
