@@ -59,16 +59,26 @@ _df_load_config() {
 
     # Load from config file if it exists
     if [[ -f "$_DF_CONFIG_FILE" ]]; then
-        while IFS='=' read -r key value || [[ -n "$key" ]]; do
+        while IFS= read -r line || [[ -n "$line" ]]; do
             # Skip comments and empty lines
-            [[ "$key" =~ ^[[:space:]]*# ]] && continue
-            [[ -z "$key" ]] && continue
+            [[ "$line" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "$line" ]] && continue
+            
+            # Only process lines containing '='
+            [[ "$line" != *"="* ]] && continue
+
+            # Split on first '=' only, preserving '=' in values
+            key="${line%%=*}"
+            value="${line#*=}"
 
             # Trim whitespace from key and value
             key="${key#"${key%%[![:space:]]*}"}"    # trim leading
             key="${key%"${key##*[![:space:]]}"}"    # trim trailing
             value="${value#"${value%%[![:space:]]*}"}"  # trim leading
             value="${value%"${value##*[![:space:]]}"}"  # trim trailing
+
+            # Skip if key is empty after trimming
+            [[ -z "$key" ]] && continue
 
             case "$key" in
                 default_branch) _DF_DEFAULT_BRANCH="$value" ;;
