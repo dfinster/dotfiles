@@ -1,0 +1,50 @@
+#!/bin/zsh
+#
+# dotfiles - Lightweight dispatcher for dotfiles management
+#
+
+
+# Ensure DOTFILES is set
+if [[ -z "$DOTFILES" ]]; then
+    echo -e "\033[91mError:\033[0m DOTFILES environment variable is not set" >&2
+    return 1
+fi
+
+# Ensure scripts directory exists
+if [[ ! -d "$DOTFILES/scripts" ]]; then
+    echo -e "\033[91mError:\033[0m Scripts directory not found at $DOTFILES/scripts" >&2
+    return 1
+fi
+
+# Main command dispatcher
+case "$1" in
+    update)
+        "$DOTFILES/scripts/dotfiles-update.sh" "$@"
+        ;;
+    # silent check at shell startup
+    autocheck)
+        "$DOTFILES/scripts/dotfiles-check.sh" "autocheck"
+        ;;
+    # manual check for updates
+    check)
+        "$DOTFILES/scripts/dotfiles-check.sh"
+        ;;
+    branch)
+        "$DOTFILES/scripts/dotfiles-branch.sh" "$2"
+        ;;
+    config)
+        "$DOTFILES/scripts/dotfiles-config.sh" "${@:2}"
+        ;;
+    doctor)
+        "$DOTFILES/scripts/dotfiles-doctor.sh" "${@:2}"
+        ;;
+    help|--help|-h|"")
+        "$DOTFILES/scripts/dotfiles-help.sh" "${@:2}"
+        ;;
+    *)
+        echo -e "\033[91mError:\033[0m Unknown command '$1'" >&2
+        echo
+        "$DOTFILES/scripts/dotfiles-help.sh"
+        return 1
+        ;;
+esac

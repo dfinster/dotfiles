@@ -1,0 +1,168 @@
+#!/bin/zsh
+#
+# dotfiles-doctor - System diagnostics for dotfiles
+#
+
+# Source shared utilities
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+source "$script_dir/dotfiles-shared.sh"
+
+# Doctor dotfiles environment analysis function
+_dot_doctor_dotfiles() {
+
+    echo
+    echo -e "${_DOT_BLUE}Checking Dotfiles Environment:${_DOT_RESET}"
+    echo
+
+    # Check DOTFILES environment variable
+    if [[ -z "$DOTFILES" ]]; then
+        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} DOTFILES environment variable not set"
+        echo -e "         Add 'export DOTFILES=/path/to/dotfiles' to your shell config"
+        echo
+        return 1
+    else
+        echo -e "  ${_DOT_BLUE}Location:${_DOT_RESET} $DOTFILES"
+    fi
+
+    # Check if dotfiles directory exists
+    if [[ ! -d "$DOTFILES" ]]; then
+        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Dotfiles directory does not exist"
+        echo -e "         Path: $DOTFILES"
+        echo
+        return 1
+    else
+        echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Directory exists and accessible"
+    fi
+
+    # Check if it's a git repository
+    if ! _dot_git_quiet rev-parse --git-dir; then
+        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Not a git repository"
+        echo -e "         Run 'git init' in $DOTFILES"
+        echo
+        return 1
+    else
+        echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Git repository detected"
+    fi
+
+    # Get current branch information
+    local current_branch=$(_dot_git branch --show-current 2>/dev/null || echo "detached")
+    if [[ "$current_branch" == "detached" ]] || [[ -z "$current_branch" ]]; then
+        echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} In detached HEAD state"
+        local commit_hash=$(_dot_git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        echo -e "  ${_DOT_BLUE}Commit:${_DOT_RESET} $commit_hash"
+    else
+        echo -e "  ${_DOT_BLUE}Current Branch:${_DOT_RESET} $current_branch"
+    fi
+
+    # Load config to get target branch
+    _dot_load_config
+    if [[ -n "$_DOT_SELECTED_BRANCH" ]] && [[ "$_DOT_SELECTED_BRANCH" != "$current_branch" ]]; then
+        echo -e "  ${_DOT_BLUE}Configured Branch:${_DOT_RESET} $_DOT_SELECTED_BRANCH"
+        echo -e "  ${_DOT_YELLOW}Note:${_DOT_RESET} Current branch differs from configured branch"
+    fi
+
+    # Check remote status
+    local remote_url=$(_dot_git config --get remote.origin.url 2>/dev/null)
+    if [[ -n "$remote_url" ]]; then
+        echo -e "  ${_DOT_BLUE}Remote URL:${_DOT_RESET} $remote_url"
+
+        # Check if remote is reachable (only if not in detached state)
+        if [[ "$current_branch" != "detached" ]]; then
+            if _dot_git_quiet ls-remote origin HEAD; then
+                echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Remote is reachable"
+
+                # Check if local is up to date with remote
+                _dot_git_quiet fetch origin "$current_branch" 2>/dev/null
+                local local_commit=$(_dot_git rev-parse HEAD 2>/dev/null)
+                local remote_commit=$(_dot_git rev-parse "origin/$current_branch" 2>/dev/null)
+
+                if [[ "$local_commit" == "$remote_commit" ]]; then
+                    echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Up to date with remote"
+                elif [[ -n "$remote_commit" ]]; then
+                    local ahead_behind=$(_dot_git rev-list --left-right --count HEAD...origin/$current_branch 2>/dev/null || echo "0 0")
+                    local ahead=$(echo "$ahead_behind" | awk '{print $1}')
+                    local behind=$(echo "$ahead_behind" | awk '{print $2}')
+
+                    if [[ "$ahead" -gt 0 ]] && [[ "$behind" -gt 0 ]]; then
+                        echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} $ahead commits ahead, $behind commits behind remote"
+                    elif [[ "$ahead" -gt 0 ]]; then
+                        echo -e "  ${_DOT_YELLOW}Info:${_DOT_RESET} $ahead commits ahead of remote"
+                    elif [[ "$behind" -gt 0 ]]; then
+                        echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} $behind commits behind remote"
+                    fi
+                fi
+            else
+                echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} Remote not reachable (network issue?)"
+            fi
+        fi
+    else
+        echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} No remote origin configured"
+    fi
+
+    # Check working directory status
+    if _dot_git_quiet diff --quiet && _dot_git_quiet diff --quiet --cached; then
+        echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Working directory clean"
+    else
+        echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} Working directory has uncommitted changes"
+
+        # Count modified files
+        local modified_files=$(_dot_git diff --name-only | wc -l | xargs)
+        local staged_files=$(_dot_git diff --cached --name-only | wc -l | xargs)
+
+        if [[ "$modified_files" -gt 0 ]]; then
+            echo -e "  ${_DOT_BLUE}Modified files:${_DOT_RESET} $modified_files"
+        fi
+        if [[ "$staged_files" -gt 0 ]]; then
+            echo -e "  ${_DOT_BLUE}Staged files:${_DOT_RESET} $staged_files"
+        fi
+    fi
+
+    # Check configuration file status
+    echo -e "  ${_DOT_BLUE}Config File:${_DOT_RESET} $_DOT_CONFIG_FILE"
+    if [[ -f "$_DOT_CONFIG_FILE" ]]; then
+        if _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
+            echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Configuration file is valid"
+        else
+            echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Configuration file is corrupted"
+        fi
+
+        # Show last modification time
+        local config_mtime=$(_dot_get_file_mtime "$_DOT_CONFIG_FILE")
+        local current_time=$(date +%s)
+        local age_seconds=$((current_time - config_mtime))
+        local age_days=$((age_seconds / 86400))
+
+        if [[ "$age_days" -gt 0 ]]; then
+            echo -e "  ${_DOT_BLUE}Last modified:${_DOT_RESET} $age_days day(s) ago"
+        else
+            local age_hours=$((age_seconds / 3600))
+            echo -e "  ${_DOT_BLUE}Last modified:${_DOT_RESET} $age_hours hour(s) ago"
+        fi
+    else
+        echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} Configuration file does not exist (using defaults)"
+    fi
+
+    # Check last update time
+    if [[ -f "$_DOT_CACHE_FILE" ]]; then
+        local last_check_time=$(_dot_get_file_mtime "$_DOT_CACHE_FILE")
+        local current_time=$(date +%s)
+        local time_diff=$((current_time - last_check_time))
+        local hours_since_check=$((time_diff / 3600))
+
+        if [[ "$hours_since_check" -lt 24 ]]; then
+            echo -e "  ${_DOT_BLUE}Last update check:${_DOT_RESET} $hours_since_check hour(s) ago"
+        else
+            local days_since_check=$((time_diff / 86400))
+            echo -e "  ${_DOT_BLUE}Last update check:${_DOT_RESET} $days_since_check day(s) ago"
+        fi
+    else
+        echo -e "  ${_DOT_YELLOW}Info:${_DOT_RESET} No previous update checks recorded"
+    fi
+
+    echo
+}
+
+# Main script execution
+if ! _dot_doctor_dotfiles; then
+    echo -e "${_DOT_RED}Error:${_DOT_RESET} Dotfiles analysis failed" >&2
+fi

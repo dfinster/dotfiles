@@ -1,0 +1,7 @@
+# Ignore dotfiles config and any backups
+dotfiles.conf
+dotfiles.conf.*
+
+# Ignore dotfiles update check timestamp file
+# This file is created by the 'dotfiles check' command to track when updates were last checked
+.last-check
