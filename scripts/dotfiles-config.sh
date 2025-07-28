@@ -18,6 +18,15 @@ _dot_config_show() {
     # Display config file location
     echo -e "  ${_DOT_BLUE}Config file:${_DOT_RESET} $_DOT_CONFIG_FILE"
 
+    # Validate config file
+    if ! _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
+        echo
+        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Config file is corrupted"
+        echo -e "         Run ${_DOT_GREEN}dotfiles config edit${_DOT_RESET} to correct it"
+        echo -e "         or ${_DOT_GREEN}dotfiles config reset${_DOT_RESET} to restore defaults"
+        return 1
+    fi
+
     # Check if config file exists and is readable
     if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
         echo -e "  ${_DOT_YELLOW}Status:${_DOT_RESET} File does not exist (using defaults)"
@@ -30,7 +39,6 @@ _dot_config_show() {
     echo
     echo -e "${_DOT_BLUE}Settings:${_DOT_RESET}"
 
-    # Create array to track which values come from file vs defaults
     # Use simple variables instead of associative arrays for compatibility
     local file_selected_branch="" file_cache_duration="" file_network_timeout="" file_auto_update_antidote=""
 
@@ -82,7 +90,7 @@ _dot_config_edit() {
     # Ensure config file exists
     if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
         echo -e "  ${_DOT_YELLOW}Info:${_DOT_RESET} Config file does not exist, creating default..."
-        
+
         # Ensure parent directory exists
         local config_dir="$(dirname "$_DOT_CONFIG_FILE")"
         if [[ ! -d "$config_dir" ]]; then
@@ -91,7 +99,7 @@ _dot_config_edit() {
                 return 1
             }
         fi
-        
+
         _dot_create_config_template
         echo
     fi
@@ -122,7 +130,7 @@ _dot_config_edit() {
     # Create pre-edit backup
     local timestamp=$(date "+%Y%m%d_%H%M%S")
     local backup_file="${_DOT_CONFIG_FILE}.edit_backup_${timestamp}"
-    
+
     echo -e "  ${_DOT_BLUE}Creating backup:${_DOT_RESET} $backup_file"
     if ! cp "$_DOT_CONFIG_FILE" "$backup_file"; then
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to create backup" >&2
@@ -155,14 +163,14 @@ _dot_config_edit() {
     # Validate edited configuration
     if _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
         echo -e "    ${_DOT_GREEN}✓${_DOT_RESET} Edited configuration is valid"
-        
+
         # Test loading the new configuration
         local temp_test=$(mktemp)
         (
             source "$DOTFILES/scripts/dotfiles-shared.sh"
             _dot_load_config > "$temp_test" 2>&1
         )
-        
+
         if [[ -s "$temp_test" ]]; then
             echo -e "    ${_DOT_YELLOW}Warning:${_DOT_RESET} Configuration loaded with warnings:"
             while IFS= read -r line; do
@@ -172,12 +180,12 @@ _dot_config_edit() {
             echo -e "    ${_DOT_GREEN}✓${_DOT_RESET} Configuration loads without warnings"
         fi
         rm -f "$temp_test"
-        
+
         echo
         echo -e "${_DOT_GREEN}Success:${_DOT_RESET} Configuration edited successfully"
         echo -e "         Backup saved as: $backup_file"
-        echo -e "         Use 'dotfiles config validate' for detailed validation"
-        
+        echo -e "         Use ${_DOT_GREEN}dotfiles config validate${_DOT_RESET} for detailed validation"
+
         # Offer to remove backup if everything looks good
         echo
         echo -n "Remove backup file? [y/N]: "
@@ -186,11 +194,11 @@ _dot_config_edit() {
             rm -f "$backup_file"
             echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Backup file removed"
         fi
-        
+
     else
         echo -e "    ${_DOT_RED}Error:${_DOT_RESET} Edited configuration is invalid"
         echo
-        
+
         # Offer repair or rollback options
         echo -e "${_DOT_YELLOW}Options:${_DOT_RESET}"
         echo -e "  ${_DOT_BLUE}1.${_DOT_RESET} Edit again (e)"
@@ -199,7 +207,7 @@ _dot_config_edit() {
         echo
         echo -n "Choose option [e/r/k]: "
         read -r REPLY
-        
+
         case "$REPLY" in
             e|E)
                 echo -e "  ${_DOT_BLUE}Relaunching editor...${_DOT_RESET}"
@@ -236,7 +244,7 @@ _dot_config_reset() {
     if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
         echo -e "  ${_DOT_YELLOW}Info:${_DOT_RESET} Config file does not exist"
         echo -e "        Creating default configuration..."
-        
+
         # Ensure parent directory exists
         local config_dir="$(dirname "$_DOT_CONFIG_FILE")"
         if [[ ! -d "$config_dir" ]]; then
@@ -245,7 +253,7 @@ _dot_config_reset() {
                 return 1
             }
         fi
-        
+
         _dot_create_config_template
         echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Default configuration created"
         return 0
@@ -264,7 +272,7 @@ _dot_config_reset() {
     echo -n "Continue with reset? [y/N]: "
     read -r REPLY
     echo
-    
+
     if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
         echo -e "  ${_DOT_YELLOW}Cancelled:${_DOT_RESET} Configuration reset aborted"
         return 0
@@ -273,7 +281,7 @@ _dot_config_reset() {
     # Create timestamped backup
     local timestamp=$(date "+%Y%m%d_%H%M%S")
     local backup_file="${_DOT_CONFIG_FILE}.backup_${timestamp}"
-    
+
     echo -e "  ${_DOT_BLUE}Creating backup:${_DOT_RESET} $backup_file"
     if ! cp "$_DOT_CONFIG_FILE" "$backup_file"; then
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to create backup" >&2
@@ -293,7 +301,7 @@ _dot_config_reset() {
 
     # Create temporary file for atomic replacement
     local temp_file="${_DOT_CONFIG_FILE}.tmp_${timestamp}"
-    
+
     # Generate new config content
     cat > "$temp_file" <<EOF
 # Dotfiles Configuration
@@ -326,19 +334,19 @@ EOF
     echo -e "  ${_DOT_BLUE}Validating:${_DOT_RESET} New configuration..."
     if _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
         echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} New configuration is valid"
-        
+
         # Show preserved settings
         if [[ -n "$preserved_branch" ]]; then
             echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Preserved branch setting: '$preserved_branch'"
         fi
-        
+
         echo
         echo -e "${_DOT_GREEN}Success:${_DOT_RESET} Configuration reset completed"
         echo -e "         Backup saved as: $backup_file"
     else
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} New configuration failed validation" >&2
         echo -e "         Restoring from backup..."
-        
+
         # Restore from backup
         if mv "$backup_file" "$_DOT_CONFIG_FILE"; then
             echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Configuration restored from backup"
@@ -457,7 +465,7 @@ _dot_config_validate() {
     [[ $found_cache_duration -eq 0 ]] && missing_keys+=("cache_duration")
     [[ $found_network_timeout -eq 0 ]] && missing_keys+=("network_timeout")
     [[ $found_auto_update_antidote -eq 0 ]] && missing_keys+=("auto_update_antidote")
-    
+
     for missing_key in "${missing_keys[@]}"; do
         echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} Missing required key: '$missing_key'"
         echo -e "           Using default value: $(_dot_get_default "$missing_key")"

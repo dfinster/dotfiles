@@ -159,7 +159,7 @@ _dot_is_config_corrupted() {
                     network_timeout) found_network_timeout=1 ;;
                     auto_update_antidote) found_auto_update_antidote=1 ;;
                 esac
-                
+
                 if ! _dot_validate_config_value "$key" "$value"; then
                     return 1  # corrupted - invalid value
                 fi
@@ -198,7 +198,9 @@ _dot_load_config() {
 
     # Check for corruption and recover if needed
     if [[ -f "$_DOT_CONFIG_FILE" ]] && ! _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
-        echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted, using defaults" >&2
+        echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted, please run: ${_DOT_GREEN}dotfiles config help${_DOT_RESET}" >&2
+        echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Using default configuration." >&2
+        return 1
     fi
 
     # Load from config file if it exists
@@ -235,7 +237,7 @@ _dot_load_config() {
 
     # Validate and sanitize loaded configuration values
     _dot_validate_config
-    
+
     # Mark as loaded for this session
     eval "${config_loaded_var}=1"
 }
@@ -299,23 +301,23 @@ _dot_cache_command() {
     local cache_key="$1"
     local cache_duration="${2:-300}"  # Default 5 minutes
     local command="$3"
-    
+
     # Ensure cache directory exists
     [[ ! -d "$_DOT_CACHE_DIR" ]] && mkdir -p "$_DOT_CACHE_DIR"
-    
+
     local cache_file="$_DOT_CACHE_DIR/$cache_key"
     local current_time=$(date +%s)
-    
+
     # Check if cache is valid
     if [[ -f "$cache_file" ]]; then
         local cache_time=$(_dot_get_file_mtime "$cache_file")
         local age=$((current_time - cache_time))
-        
+
         if [[ "$age" -lt "$cache_duration" ]]; then
             cat "$cache_file" 2>/dev/null && return 0
         fi
     fi
-    
+
     # Execute command and cache result
     local result
     if result=$(eval "$command" 2>/dev/null); then
@@ -329,8 +331,10 @@ _dot_cache_command() {
 
 # Common setup function
 _dot_setup() {
-    # Load configuration first
-    _dot_load_config
+    # Load configuration, exit early if corrupted
+    if ! _dot_load_config; then
+        return 1
+    fi
 
     # Exit early if DOTFILES environment variable is not set
     if [[ -z "$DOTFILES" ]]; then
@@ -359,7 +363,7 @@ _dot_setup() {
 # Cache management functions
 _dot_clear_cache() {
     local cache_type="${1:-all}"
-    
+
     case "$cache_type" in
         all)
             if [[ -d "$_DOT_CACHE_DIR" ]]; then
@@ -391,7 +395,7 @@ _dot_perf_end() {
     local operation="$1"
     local end_time=$(date +%s%N)
     local duration=$(( (end_time - _DOT_PERF_START) / 1000000 ))
-    
+
     if [[ "$duration" -gt 1000 ]]; then
         echo -e "${_DOT_YELLOW}Performance:${_DOT_RESET} $operation took ${duration}ms" >&2
     fi
