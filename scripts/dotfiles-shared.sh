@@ -296,39 +296,6 @@ _dot_get_file_mtime() {
     fi
 }
 
-# Cached command execution
-_dot_cache_command() {
-    local cache_key="$1"
-    local cache_duration="${2:-300}"  # Default 5 minutes
-    local command="$3"
-
-    # Ensure cache directory exists
-    [[ ! -d "$_DOT_CACHE_DIR" ]] && mkdir -p "$_DOT_CACHE_DIR"
-
-    local cache_file="$_DOT_CACHE_DIR/$cache_key"
-    local current_time=$(date +%s)
-
-    # Check if cache is valid
-    if [[ -f "$cache_file" ]]; then
-        local cache_time=$(_dot_get_file_mtime "$cache_file")
-        local age=$((current_time - cache_time))
-
-        if [[ "$age" -lt "$cache_duration" ]]; then
-            cat "$cache_file" 2>/dev/null && return 0
-        fi
-    fi
-
-    # Execute command and cache result
-    local result
-    if result=$(eval "$command" 2>/dev/null); then
-        echo "$result" > "$cache_file"
-        echo "$result"
-        return 0
-    else
-        return 1
-    fi
-}
-
 # Common setup function
 _dot_setup() {
     # Load configuration, exit early if corrupted
@@ -358,45 +325,4 @@ _dot_setup() {
     _DOT_CURRENT_BRANCH=$(_dot_git branch --show-current)
 
     return 0
-}
-
-# Cache management functions
-_dot_clear_cache() {
-    local cache_type="${1:-all}"
-
-    case "$cache_type" in
-        all)
-            if [[ -d "$_DOT_CACHE_DIR" ]]; then
-                rm -rf "$_DOT_CACHE_DIR"/*
-                echo -e "${_DOT_GREEN}✓${_DOT_RESET} All cache cleared"
-            fi
-            ;;
-        old)
-            if [[ -d "$_DOT_CACHE_DIR" ]]; then
-                find "$_DOT_CACHE_DIR" -type f -mtime +1 -delete
-                echo -e "${_DOT_GREEN}✓${_DOT_RESET} Old cache files cleared"
-            fi
-            ;;
-        *)
-            if [[ -f "$_DOT_CACHE_DIR/$cache_type" ]]; then
-                rm -f "$_DOT_CACHE_DIR/$cache_type"
-                echo -e "${_DOT_GREEN}✓${_DOT_RESET} Cache '$cache_type' cleared"
-            fi
-            ;;
-    esac
-}
-
-# Performance monitoring
-_dot_perf_start() {
-    _DOT_PERF_START=$(date +%s%N)
-}
-
-_dot_perf_end() {
-    local operation="$1"
-    local end_time=$(date +%s%N)
-    local duration=$(( (end_time - _DOT_PERF_START) / 1000000 ))
-
-    if [[ "$duration" -gt 1000 ]]; then
-        echo -e "${_DOT_YELLOW}Performance:${_DOT_RESET} $operation took ${duration}ms" >&2
-    fi
 }
