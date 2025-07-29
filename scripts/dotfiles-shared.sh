@@ -107,19 +107,28 @@ _dot_validate_config_value() {
     return 0
 }
 
+# Generate config file content - DRY shared function
+_dot_generate_config_content() {
+    local branch_override="${1:-$_DOT_DEFAULT_SELECTED_BRANCH}"
+    local comment_line="${2:-}"
+
+    echo "# Dotfiles Configuration"
+    echo "# This file is not tracked in git and contains user-specific settings"
+    if [[ -n "$comment_line" ]]; then
+        echo "# $comment_line"
+    fi
+    echo
+    echo "selected_branch=$branch_override"
+    echo "cache_duration=$_DOT_DEFAULT_CACHE_DURATION"
+    echo "network_timeout=$_DOT_DEFAULT_NETWORK_TIMEOUT"
+    echo "auto_update_antidote=$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE"
+    echo "auto_update_dotfiles=$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES"
+}
+
 # Create configuration file template if it doesn't exist
 _dot_create_config_template() {
     if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
-        cat > "$_DOT_CONFIG_FILE" <<EOF
-# Dotfiles Configuration
-# This file is not tracked in git and contains user-specific settings
-
-selected_branch=$_DOT_DEFAULT_SELECTED_BRANCH
-cache_duration=$_DOT_DEFAULT_CACHE_DURATION # 2 days in seconds
-network_timeout=$_DOT_DEFAULT_NETWORK_TIMEOUT
-auto_update_antidote=$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE
-auto_update_dotfiles=$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES
-EOF
+        _dot_generate_config_content > "$_DOT_CONFIG_FILE"
         echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Created config template at ${_DOT_BLUE}$_DOT_CONFIG_FILE${_DOT_RESET}"
         echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Edit this file to customize your dotfiles settings"
     fi
@@ -262,25 +271,25 @@ _dot_validate_config() {
             echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid selected_branch '$_DOT_SELECTED_BRANCH', using default '$_DOT_DEFAULT_SELECTED_BRANCH'" >&2
         _DOT_SELECTED_BRANCH="$_DOT_DEFAULT_SELECTED_BRANCH"
     fi
-    
+
     if ! _dot_validate_config_value "cache_duration" "$_DOT_CACHE_DURATION"; then
         [[ "$_DOT_CACHE_DURATION" != "$_DOT_DEFAULT_CACHE_DURATION" ]] && \
             echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid cache_duration '$_DOT_CACHE_DURATION', using default '$_DOT_DEFAULT_CACHE_DURATION'" >&2
         _DOT_CACHE_DURATION="$_DOT_DEFAULT_CACHE_DURATION"
     fi
-    
+
     if ! _dot_validate_config_value "network_timeout" "$_DOT_NETWORK_TIMEOUT"; then
         [[ "$_DOT_NETWORK_TIMEOUT" != "$_DOT_DEFAULT_NETWORK_TIMEOUT" ]] && \
             echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid network_timeout '$_DOT_NETWORK_TIMEOUT', using default '$_DOT_DEFAULT_NETWORK_TIMEOUT'" >&2
         _DOT_NETWORK_TIMEOUT="$_DOT_DEFAULT_NETWORK_TIMEOUT"
     fi
-    
+
     if ! _dot_validate_config_value "auto_update_antidote" "$_DOT_AUTO_UPDATE_ANTIDOTE"; then
         [[ "$_DOT_AUTO_UPDATE_ANTIDOTE" != "$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE" ]] && \
             echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid auto_update_antidote '$_DOT_AUTO_UPDATE_ANTIDOTE', using default '$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE'" >&2
         _DOT_AUTO_UPDATE_ANTIDOTE="$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE"
     fi
-    
+
     if ! _dot_validate_config_value "auto_update_dotfiles" "$_DOT_AUTO_UPDATE_DOTFILES"; then
         [[ "$_DOT_AUTO_UPDATE_DOTFILES" != "$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES" ]] && \
             echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid auto_update_dotfiles '$_DOT_AUTO_UPDATE_DOTFILES', using default '$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES'" >&2

@@ -95,3 +95,4 @@ Documentation is **allowed and encouraged** in this project. Feel free to:
 ## Code Best Practices
 
 - Don't use associative arrays
+- Avoid using heredocs

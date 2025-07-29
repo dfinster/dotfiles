@@ -303,18 +303,8 @@ _dot_config_reset() {
     # Create temporary file for atomic replacement
     local temp_file="${_DOT_CONFIG_FILE}.tmp_${timestamp}"
 
-    # Generate new config content
-    cat > "$temp_file" <<EOF
-# Dotfiles Configuration
-# This file is not tracked in git and contains user-specific settings
-# Reset on: $(date)
-
-selected_branch=${preserved_branch:-main}
-cache_duration=43200
-network_timeout=30
-auto_update_antidote=true
-auto_update_dotfiles=true
-EOF
+    # Generate new config content using shared function
+    _dot_generate_config_content "${preserved_branch:-main}" "Reset on: $(date)" > "$temp_file"
 
     # Verify temp file was created correctly
     if [[ ! -f "$temp_file" ]] || [[ ! -s "$temp_file" ]]; then
