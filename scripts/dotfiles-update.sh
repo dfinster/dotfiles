@@ -124,8 +124,10 @@ _dot_update() {
         return 1
     fi
 
-    # # Use the dedicated check script to show update status
-    # "$script_dir/dotfiles-check.sh" || return 0
+    # Handle branch mismatch between environment and repository
+    if ! _dot_handle_branch_mismatch; then
+        return 0
+    fi
 
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Updating dotfiles..."
 
