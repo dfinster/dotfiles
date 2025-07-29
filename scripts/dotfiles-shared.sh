@@ -208,8 +208,7 @@ _dot_is_config_corrupted() {
 # Load configuration from file and environment variables
 _dot_load_config() {
     # Skip if already loaded recently (within same shell session)
-    local config_loaded_var="_DOT_CONFIG_LOADED_$$"
-    if eval "[[ -n \"\${${config_loaded_var}}\" ]]"; then
+    if [[ -n "$_DOT_CONFIG_LOADED" ]]; then
         return 0
     fi
 
@@ -218,8 +217,12 @@ _dot_load_config() {
 
     # Check for corruption and recover if needed
     if [[ -f "$_DOT_CONFIG_FILE" ]] && ! _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
-        echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted, please run: ${_DOT_GREEN}dotfiles config help${_DOT_RESET}" >&2
-        echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Using default configuration." >&2
+        # Show warning once per shell session during interactive startup
+        if [[ -z "$_DOT_CONFIG_WARNED" ]]; then
+            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted, please run: ${_DOT_GREEN}dotfiles config help${_DOT_RESET}" >&2
+            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Using default configuration." >&2
+            export _DOT_CONFIG_WARNED=1
+        fi
         return 1
     fi
 
@@ -260,7 +263,7 @@ _dot_load_config() {
     _dot_validate_config
 
     # Mark as loaded for this session
-    eval "${config_loaded_var}=1"
+    export _DOT_CONFIG_LOADED=1
 }
 
 # Validate and reset invalid config values to defaults

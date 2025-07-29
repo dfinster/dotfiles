@@ -132,7 +132,7 @@ _dot_config_edit() {
     local timestamp=$(date "+%Y%m%d_%H%M%S")
     local backup_file="${_DOT_CONFIG_FILE}.edit_backup_${timestamp}"
 
-    echo -e "  ${_DOT_BLUE}Creating backup:${_DOT_RESET} $backup_file"
+    echo -e "  ${_DOT_BLUE}Creating backup...${_DOT_RESET}"
     if ! cp "$_DOT_CONFIG_FILE" "$backup_file"; then
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to create backup" >&2
         return 1
@@ -184,8 +184,8 @@ _dot_config_edit() {
 
         echo
         echo -e "${_DOT_GREEN}Success:${_DOT_RESET} Configuration edited successfully"
-        echo -e "         Backup saved as: $backup_file"
-        echo -e "         Use ${_DOT_GREEN}dotfiles config validate${_DOT_RESET} for detailed validation"
+        echo -e "${_DOT_GREEN}Backup saved as:${_DOT_RESET} $backup_file"
+        echo -e "Use ${_DOT_GREEN}dotfiles config validate${_DOT_RESET} for detailed validation"
 
         # Offer to remove backup if everything looks good
         echo
@@ -283,22 +283,12 @@ _dot_config_reset() {
     local timestamp=$(date "+%Y%m%d_%H%M%S")
     local backup_file="${_DOT_CONFIG_FILE}.backup_${timestamp}"
 
-    echo -e "  ${_DOT_BLUE}Creating backup:${_DOT_RESET} $backup_file"
+    echo -e "  ${_DOT_BLUE}Creating backup...${_DOT_RESET}"
     if ! cp "$_DOT_CONFIG_FILE" "$backup_file"; then
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to create backup" >&2
         return 1
     fi
     echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Backup created successfully"
-
-    # Preserve current branch setting if valid
-    local preserved_branch=""
-    _dot_load_config  # Load current config to get _DOT_SELECTED_BRANCH
-    if [[ -n "$_DOT_SELECTED_BRANCH" ]] && [[ "$_DOT_SELECTED_BRANCH" != "main" ]]; then
-        if [[ "$_DOT_SELECTED_BRANCH" =~ ^[a-zA-Z0-9/_-]+$ ]]; then
-            preserved_branch="$_DOT_SELECTED_BRANCH"
-            echo -e "  ${_DOT_BLUE}Preserving:${_DOT_RESET} branch setting '$preserved_branch'"
-        fi
-    fi
 
     # Create temporary file for atomic replacement
     local temp_file="${_DOT_CONFIG_FILE}.tmp_${timestamp}"
@@ -334,10 +324,10 @@ _dot_config_reset() {
 
         echo
         echo -e "${_DOT_GREEN}Success:${_DOT_RESET} Configuration reset completed"
-        echo -e "         Backup saved as: $backup_file"
+        echo -e "${_DOT_GREEN}Backup saved as:${_DOT_RESET} $backup_file"
     else
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} New configuration failed validation" >&2
-        echo -e "         Restoring from backup..."
+        echo -e "  Restoring from backup..."
 
         # Restore from backup
         if mv "$backup_file" "$_DOT_CONFIG_FILE"; then
@@ -347,6 +337,9 @@ _dot_config_reset() {
         fi
         return 1
     fi
+
+    echo
+    _dot_config_show
 
     return 0
 }
