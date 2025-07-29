@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 Personal dotfiles repository managing macOS shell environment with modular Zsh + Antidote plugins.
 
 ## Key Files
@@ -37,16 +39,30 @@ Personal dotfiles repository managing macOS shell environment with modular Zsh +
 - `dotfiles doctor <section>` - Run specific diagnostic section (system, dotfiles, dependencies, plugins, performance)
 - `dotfiles help [topic]` - Show help information (supports topics: config, doctor, update, troubleshooting)
 
+**Development and testing:**
+- `scripts/dotfiles-test.sh` - Run comprehensive test suite for all functionality
+- `antidote load` - Reload Zsh plugins after modifying `.zsh_plugins.txt`
+
 **Key functions:**
 - `is-macos` - Detect macOS environment
 - `code-wait` - VS Code wrapper for terminal editor use
 - `dotfiles` - Manage dotfiles repository (update, check, switch branches)
 
+## Architecture Overview
+
+The dotfiles system uses a modular architecture:
+
+1. **Configuration Loading**: `zsh/.zshrc` loads Antidote plugin manager, then sources all files in `zsh/.zshrc.d/` and auto-loads functions from `zsh/.zfunctions/`
+2. **Plugin Management**: Antidote loads plugins defined in `zsh/.zsh_plugins.txt` using various bundle formats
+3. **Configuration Management**: `scripts/dotfiles-shared.sh` provides shared utilities for all management scripts
+4. **Auto-updates**: Interactive shells automatically check for updates via `zsh/.zshrc.d/dotfiles.zsh`
+
 ## Directory Layout
 
 - `atuin/` - Shell history manager config
-- `git/` - Git config and ignore rules
-- `zsh/` - Shell configs, plugins in `plugins/`, functions in `.zfunctions/`
+- `git/` - Git config and ignore rules  
+- `scripts/` - Modular management scripts (update, check, config, doctor, test, etc.)
+- `zsh/` - Shell configs, plugins in `plugins/`, functions in `.zfunctions/`, modular configs in `.zshrc.d/`
 
 ## Integrations
 
@@ -75,3 +91,7 @@ Documentation is **allowed and encouraged** in this project. Feel free to:
 - Add README files for new components
 - Write inline code documentation
 - Update existing documentation to reflect changes
+
+## Code Best Practices
+
+- Don't use associative arrays

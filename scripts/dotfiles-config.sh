@@ -40,7 +40,7 @@ _dot_config_show() {
     echo -e "${_DOT_BLUE}Settings:${_DOT_RESET}"
 
     # Use simple variables instead of associative arrays for compatibility
-    local file_selected_branch="" file_cache_duration="" file_network_timeout="" file_auto_update_antidote=""
+    local file_selected_branch="" file_cache_duration="" file_network_timeout="" file_auto_update_antidote="" file_auto_update_dotfiles=""
 
     # Parse current config file if it exists
     if [[ -f "$_DOT_CONFIG_FILE" ]]; then
@@ -54,20 +54,21 @@ _dot_config_show() {
                     cache_duration) file_cache_duration="$value" ;;
                     network_timeout) file_network_timeout="$value" ;;
                     auto_update_antidote) file_auto_update_antidote="$value" ;;
+                    auto_update_dotfiles) file_auto_update_dotfiles="$value" ;;
                 esac
             fi
         done < "$_DOT_CONFIG_FILE"
     fi
 
     # Display each configuration value with source indication
-    local keys=(selected_branch cache_duration network_timeout auto_update_antidote)
-    local current_values=("$_DOT_SELECTED_BRANCH" "$_DOT_CACHE_DURATION" "$_DOT_NETWORK_TIMEOUT" "$_DOT_AUTO_UPDATE_ANTIDOTE")
+    local keys=(selected_branch cache_duration network_timeout auto_update_antidote auto_update_dotfiles)
+    local current_values=("$_DOT_SELECTED_BRANCH" "$_DOT_CACHE_DURATION" "$_DOT_NETWORK_TIMEOUT" "$_DOT_AUTO_UPDATE_ANTIDOTE" "$_DOT_AUTO_UPDATE_DOTFILES")
 
     # Print table header
     echo -e "  ${_DOT_BLUE}$(printf "%-22s %-15s %s" "Setting" "Current Value" "Default Value")${_DOT_RESET}"
     echo -e "  $(printf "%-22s %-15s %s" "-------" "-------------" "-------------")"
 
-    for i in {1..4}; do
+    for i in {1..5}; do
         local key="${keys[$i]}"
         local current_value="${current_values[$i]}"
         local default_value="$(_dot_get_default "$key")"
@@ -312,6 +313,7 @@ selected_branch=${preserved_branch:-main}
 cache_duration=43200
 network_timeout=30
 auto_update_antidote=true
+auto_update_dotfiles=true
 EOF
 
     # Verify temp file was created correctly
@@ -407,7 +409,7 @@ _dot_config_validate() {
 
     # Parse and validate each setting
     # Use simple variables instead of associative arrays for compatibility
-    local found_selected_branch=0 found_cache_duration=0 found_network_timeout=0 found_auto_update_antidote=0
+    local found_selected_branch=0 found_cache_duration=0 found_network_timeout=0 found_auto_update_antidote=0 found_auto_update_dotfiles=0
     local line_number=0
 
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -438,6 +440,7 @@ _dot_config_validate() {
                 cache_duration) found_cache_duration=1 ;;
                 network_timeout) found_network_timeout=1 ;;
                 auto_update_antidote) found_auto_update_antidote=1 ;;
+                auto_update_dotfiles) found_auto_update_dotfiles=1 ;;
             esac
 
             # Validate known keys
@@ -465,6 +468,7 @@ _dot_config_validate() {
     [[ $found_cache_duration -eq 0 ]] && missing_keys+=("cache_duration")
     [[ $found_network_timeout -eq 0 ]] && missing_keys+=("network_timeout")
     [[ $found_auto_update_antidote -eq 0 ]] && missing_keys+=("auto_update_antidote")
+    [[ $found_auto_update_dotfiles -eq 0 ]] && missing_keys+=("auto_update_dotfiles")
 
     for missing_key in "${missing_keys[@]}"; do
         echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} Missing required key: '$missing_key'"

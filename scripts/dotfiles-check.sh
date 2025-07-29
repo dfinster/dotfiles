@@ -16,6 +16,11 @@ _dot_check_cache_validity() {
         return 1  # Force cache to return invalid, continue processing
     fi
 
+    # If auto_update_dotfiles is false, act as if cache is valid to skip autocheck updates
+    if [[ "$_DOT_AUTO_UPDATE_DOTFILES" == "false" ]]; then
+        return 0  # Skip remote check when auto updates are disabled
+    fi
+
     # Skip fetch if we've checked recently
     if [[ -f "$_DOT_CACHE_FILE" ]]; then
         local cache_time=$(_dot_get_file_mtime "$_DOT_CACHE_FILE")

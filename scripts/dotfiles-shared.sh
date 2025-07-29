@@ -10,32 +10,41 @@ readonly _DOT_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/dotfiles.c
 readonly _DOT_CACHE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/.last-check"
 readonly _DOT_CACHE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/.cache"
 
-# Default configuration values
-_DOT_SELECTED_BRANCH="main"
-_DOT_CACHE_DURATION=43200  # 12 hours in seconds
-_DOT_NETWORK_TIMEOUT=30
-_DOT_AUTO_UPDATE_ANTIDOTE=true
-_DOT_GITHUB_URL="https://github.com/dfinster/dotfiles"
+# Configuration defaults - single source of truth
+readonly _DOT_DEFAULT_SELECTED_BRANCH="main"
+readonly _DOT_DEFAULT_CACHE_DURATION="172800"  # 2 days in seconds
+readonly _DOT_DEFAULT_NETWORK_TIMEOUT="30"
+readonly _DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE="true"
+readonly _DOT_DEFAULT_AUTO_UPDATE_DOTFILES="true"
+readonly _DOT_GITHUB_URL="https://github.com/dfinster/dotfiles"
 
-# Configuration validation constants
-# Configuration defaults - using functions for compatibility
+# Initialize with defaults
+_DOT_SELECTED_BRANCH="$_DOT_DEFAULT_SELECTED_BRANCH"
+_DOT_CACHE_DURATION="$_DOT_DEFAULT_CACHE_DURATION"
+_DOT_NETWORK_TIMEOUT="$_DOT_DEFAULT_NETWORK_TIMEOUT"
+_DOT_AUTO_UPDATE_ANTIDOTE="$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE"
+_DOT_AUTO_UPDATE_DOTFILES="$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES"
+
+# Get default value for a config key
 _dot_get_default() {
     case "$1" in
-        selected_branch) echo "main" ;;
-        cache_duration) echo "43200" ;;
-        network_timeout) echo "30" ;;
-        auto_update_antidote) echo "true" ;;
+        selected_branch) echo "$_DOT_DEFAULT_SELECTED_BRANCH" ;;
+        cache_duration) echo "$_DOT_DEFAULT_CACHE_DURATION" ;;
+        network_timeout) echo "$_DOT_DEFAULT_NETWORK_TIMEOUT" ;;
+        auto_update_antidote) echo "$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE" ;;
+        auto_update_dotfiles) echo "$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES" ;;
         *) echo "" ;;
     esac
 }
 
-# Configuration validators - using functions for compatibility
+# Get validator pattern for a config key
 _dot_get_validator() {
     case "$1" in
-        selected_branch) echo '^[a-zA-Z0-9/_-]+$' ;;
+        selected_branch) echo '^[a-zA-Z0-9._/-]+$' ;;
         cache_duration) echo '^[0-9]+$' ;;
         network_timeout) echo '^[0-9]+$' ;;
         auto_update_antidote) echo '^(true|false)$' ;;
+        auto_update_dotfiles) echo '^(true|false)$' ;;
         *) echo "" ;;
     esac
 }
@@ -100,16 +109,16 @@ _dot_validate_config_value() {
 
 # Create configuration file template if it doesn't exist
 _dot_create_config_template() {
-
     if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
-        cat > "$_DOT_CONFIG_FILE" <<'EOF'
+        cat > "$_DOT_CONFIG_FILE" <<EOF
 # Dotfiles Configuration
 # This file is not tracked in git and contains user-specific settings
 
-selected_branch=main
-cache_duration=43200
-network_timeout=30
-auto_update_antidote=true
+selected_branch=$_DOT_DEFAULT_SELECTED_BRANCH
+cache_duration=$_DOT_DEFAULT_CACHE_DURATION # 2 days in seconds
+network_timeout=$_DOT_DEFAULT_NETWORK_TIMEOUT
+auto_update_antidote=$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE
+auto_update_dotfiles=$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES
 EOF
         echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Created config template at ${_DOT_BLUE}$_DOT_CONFIG_FILE${_DOT_RESET}"
         echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Edit this file to customize your dotfiles settings"
@@ -138,7 +147,7 @@ _dot_is_config_corrupted() {
     local valid_lines=0
     local parse_errors=0
     # Use simple variables to track found keys instead of associative arrays
-    local found_selected_branch=0 found_cache_duration=0 found_network_timeout=0 found_auto_update_antidote=0
+    local found_selected_branch=0 found_cache_duration=0 found_network_timeout=0 found_auto_update_antidote=0 found_auto_update_dotfiles=0
     local key value
 
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -158,6 +167,7 @@ _dot_is_config_corrupted() {
                     cache_duration) found_cache_duration=1 ;;
                     network_timeout) found_network_timeout=1 ;;
                     auto_update_antidote) found_auto_update_antidote=1 ;;
+                    auto_update_dotfiles) found_auto_update_dotfiles=1 ;;
                 esac
 
                 if ! _dot_validate_config_value "$key" "$value"; then
@@ -181,6 +191,7 @@ _dot_is_config_corrupted() {
     [[ $found_cache_duration -eq 0 ]] && return 1
     [[ $found_network_timeout -eq 0 ]] && return 1
     [[ $found_auto_update_antidote -eq 0 ]] && return 1
+    [[ $found_auto_update_dotfiles -eq 0 ]] && return 1
 
     return 0  # not corrupted
 }
@@ -231,6 +242,7 @@ _dot_load_config() {
                 cache_duration) _DOT_CACHE_DURATION="$value" ;;
                 network_timeout) _DOT_NETWORK_TIMEOUT="$value" ;;
                 auto_update_antidote) _DOT_AUTO_UPDATE_ANTIDOTE="$value" ;;
+                auto_update_dotfiles) _DOT_AUTO_UPDATE_DOTFILES="$value" ;;
             esac
         done < "$_DOT_CONFIG_FILE"
     fi
@@ -242,38 +254,37 @@ _dot_load_config() {
     eval "${config_loaded_var}=1"
 }
 
-# Config validation functions with safe fallbacks
+# Validate and reset invalid config values to defaults
 _dot_validate_config() {
-    # Validate cache_duration (must be positive integer)
-    if ! [[ "$_DOT_CACHE_DURATION" =~ ^[0-9]+$ ]] || (( _DOT_CACHE_DURATION <= 0 )); then
-        if [[ "$_DOT_CACHE_DURATION" != "43200" ]]; then
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid cache_duration '$_DOT_CACHE_DURATION', using default 43200" >&2
-        fi
-        _DOT_CACHE_DURATION=43200
+    # Validate each config key and reset to default if invalid
+    if ! _dot_validate_config_value "selected_branch" "$_DOT_SELECTED_BRANCH"; then
+        [[ "$_DOT_SELECTED_BRANCH" != "$_DOT_DEFAULT_SELECTED_BRANCH" ]] && \
+            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid selected_branch '$_DOT_SELECTED_BRANCH', using default '$_DOT_DEFAULT_SELECTED_BRANCH'" >&2
+        _DOT_SELECTED_BRANCH="$_DOT_DEFAULT_SELECTED_BRANCH"
     fi
-
-    # Validate network_timeout (must be positive integer 1-300)
-    if ! [[ "$_DOT_NETWORK_TIMEOUT" =~ ^[0-9]+$ ]] || (( _DOT_NETWORK_TIMEOUT < 1 || _DOT_NETWORK_TIMEOUT > 300 )); then
-        if [[ "$_DOT_NETWORK_TIMEOUT" != "30" ]]; then
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid network_timeout '$_DOT_NETWORK_TIMEOUT', using default 30" >&2
-        fi
-        _DOT_NETWORK_TIMEOUT=30
+    
+    if ! _dot_validate_config_value "cache_duration" "$_DOT_CACHE_DURATION"; then
+        [[ "$_DOT_CACHE_DURATION" != "$_DOT_DEFAULT_CACHE_DURATION" ]] && \
+            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid cache_duration '$_DOT_CACHE_DURATION', using default '$_DOT_DEFAULT_CACHE_DURATION'" >&2
+        _DOT_CACHE_DURATION="$_DOT_DEFAULT_CACHE_DURATION"
     fi
-
-    # Validate selected_branch (must be valid git branch name)
-    if ! [[ "$_DOT_SELECTED_BRANCH" =~ ^[a-zA-Z0-9._/-]+$ ]] || [[ "$_DOT_SELECTED_BRANCH" =~ ^[.-] ]] || [[ "$_DOT_SELECTED_BRANCH" =~ [.-]$ ]] || [[ "$_DOT_SELECTED_BRANCH" == *".."* ]]; then
-        if [[ "$_DOT_SELECTED_BRANCH" != "main" ]]; then
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid selected_branch '$_DOT_SELECTED_BRANCH', using default 'main'" >&2
-        fi
-        _DOT_SELECTED_BRANCH="main"
+    
+    if ! _dot_validate_config_value "network_timeout" "$_DOT_NETWORK_TIMEOUT"; then
+        [[ "$_DOT_NETWORK_TIMEOUT" != "$_DOT_DEFAULT_NETWORK_TIMEOUT" ]] && \
+            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid network_timeout '$_DOT_NETWORK_TIMEOUT', using default '$_DOT_DEFAULT_NETWORK_TIMEOUT'" >&2
+        _DOT_NETWORK_TIMEOUT="$_DOT_DEFAULT_NETWORK_TIMEOUT"
     fi
-
-    # Validate auto_update_antidote (must be true/false)
-    if [[ "$_DOT_AUTO_UPDATE_ANTIDOTE" != "true" && "$_DOT_AUTO_UPDATE_ANTIDOTE" != "false" ]]; then
-        if [[ "$_DOT_AUTO_UPDATE_ANTIDOTE" != "true" ]]; then
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid auto_update_antidote '$_DOT_AUTO_UPDATE_ANTIDOTE', using default 'true'" >&2
-        fi
-        _DOT_AUTO_UPDATE_ANTIDOTE="true"
+    
+    if ! _dot_validate_config_value "auto_update_antidote" "$_DOT_AUTO_UPDATE_ANTIDOTE"; then
+        [[ "$_DOT_AUTO_UPDATE_ANTIDOTE" != "$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE" ]] && \
+            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid auto_update_antidote '$_DOT_AUTO_UPDATE_ANTIDOTE', using default '$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE'" >&2
+        _DOT_AUTO_UPDATE_ANTIDOTE="$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE"
+    fi
+    
+    if ! _dot_validate_config_value "auto_update_dotfiles" "$_DOT_AUTO_UPDATE_DOTFILES"; then
+        [[ "$_DOT_AUTO_UPDATE_DOTFILES" != "$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES" ]] && \
+            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid auto_update_dotfiles '$_DOT_AUTO_UPDATE_DOTFILES', using default '$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES'" >&2
+        _DOT_AUTO_UPDATE_DOTFILES="$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES"
     fi
 }
 
