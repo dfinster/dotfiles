@@ -118,11 +118,11 @@ _dot_generate_config_content() {
         echo "# $comment_line"
     fi
     echo
+    echo "auto_update_dotfiles=$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES"
+    echo "auto_update_antidote=$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE"
     echo "selected_branch=$branch_override"
     echo "cache_duration=$_DOT_DEFAULT_CACHE_DURATION"
     echo "network_timeout=$_DOT_DEFAULT_NETWORK_TIMEOUT"
-    echo "auto_update_antidote=$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE"
-    echo "auto_update_dotfiles=$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES"
 }
 
 # Create configuration file template if it doesn't exist
