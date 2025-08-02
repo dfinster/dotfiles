@@ -27,15 +27,15 @@ flowchart TD
     Q --> R[Load .p10k.zsh]
     R --> S[Process dotfiles.zsh]
     S --> T{Interactive shell?}
-    T -->|No| U[Skip autocheck]
+    T -->|No| U[Skip startup]
     T -->|Yes| V{Background mode?}
-    V -->|Yes| W[dotfiles autocheck &!]
-    V -->|No| X[dotfiles autocheck]
-    
-    %% Autocheck flow
-    W --> Y[Background autocheck execution]
-    X --> Z[Synchronous autocheck execution]
-    Y --> AA[_dot_check autocheck]
+    V -->|Yes| W[dotfiles startup &!]
+    V -->|No| X[dotfiles startup]
+
+    %% startup flow
+    W --> Y[Background startup execution]
+    X --> Z[Synchronous startup execution]
+    Y --> AA[_dot_check startup]
     Z --> AA
     AA --> BB[_dot_setup]
     BB --> CC[_dot_load_config]
@@ -61,7 +61,7 @@ flowchart TD
     TT --> UU{Branch mismatch?}
     UU -->|Yes| VV[Show branch mismatch info]
     UU -->|No| WW[_dot_perform_remote_check]
-    VV --> XX[End autocheck]
+    VV --> XX[End startup]
     WW --> YY{Can reach GitHub?}
     YY -->|No| ZZ[End silently]
     YY -->|Yes| AAA[git fetch origin]
@@ -85,7 +85,7 @@ The terminal startup follows a multi-phase initialization sequence that establis
 I've created comprehensive flow documentation for all dotfiles commands:
 
 1. **flow-dotfiles-update.md** - Update command with git operations and branch switching
-2. **flow-dotfiles-check.md** - Update checking with cache management and network operations  
+2. **flow-dotfiles-check.md** - Update checking with cache management and network operations
 3. **flow-dotfiles-config.md** - Configuration management with editing, validation, and reset
 4. **flow-dotfiles-branch.md** - Branch switching with git and config synchronization
 5. **flow-dotfiles-doctor.md** - System diagnostics across multiple categories

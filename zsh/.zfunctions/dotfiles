@@ -22,8 +22,8 @@ case "$1" in
         "$DOTFILES/scripts/dotfiles-update.sh" "$@"
         ;;
     # silent check at shell startup
-    autocheck)
-        "$DOTFILES/scripts/dotfiles-check.sh" "autocheck"
+    startup)
+        "$DOTFILES/scripts/dotfiles-check.sh" "startup"
         ;;
     # manual check for updates
     check)

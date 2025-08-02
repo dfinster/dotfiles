@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `dotfiles check` command checks for available updates from the remote repository. It can run in two modes: manual check (immediate) or autocheck (respects cache duration). This command is automatically called during shell startup via the autocheck mechanism.
+The `dotfiles check` command checks for available updates from the remote repository. It can run in two modes: manual check (immediate) or startup (respects cache duration). This command is automatically called during shell startup via the startup mechanism.
 
 ## Command Flow Diagram
 
@@ -26,13 +26,13 @@ flowchart TD
     P --> Q[_dot_check_cache_validity]
     Q --> R{auto_update_dotfiles disabled?}
     R -->|Yes| S[Return early (skip check)]
-    R -->|No| T{Manual or autocheck?}
+    R -->|No| T{Manual or startup?}
     T -->|Manual| U[Bypass cache]
-    T -->|Autocheck| V{Cache still valid?}
+    T -->|startup| V{Cache still valid?}
     V -->|Yes| W[Return early (skip check)]
     V -->|No| X[Continue with check]
     U --> X
-    X --> Y{Autocheck mode?}
+    X --> Y{startup mode?}
     Y -->|Yes| Z[Show checking message]
     Y -->|No| AA[Silent mode]
     Z --> BB[_dot_handle_branch_mismatch]
@@ -62,7 +62,7 @@ flowchart TD
 - **Network check**: Always performs remote check
 - **Output**: Shows detailed results immediately
 
-### Autocheck (`dotfiles autocheck`)
+### startup (`dotfiles startup`)
 - **Cache behavior**: Respects cache duration
 - **Network check**: Only if cache expired
 - **Output**: Shows informational messages during check
@@ -72,10 +72,10 @@ flowchart TD
 
 ### _dot_check_cache_validity
 - **Purpose**: Determine if remote check should be skipped
-- **Logic**: 
-  - If `auto_update_dotfiles=false`: Always skip autocheck
+- **Logic**:
+  - If `auto_update_dotfiles=false`: Always skip startup
   - If manual check: Always proceed
-  - If autocheck: Check cache timestamp vs `cache_duration`
+  - If startup: Check cache timestamp vs `cache_duration`
 
 ### _dot_handle_branch_mismatch
 - **Purpose**: Validate branch configuration before checking
