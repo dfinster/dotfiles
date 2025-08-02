@@ -31,7 +31,7 @@ if ! _dot_git_quiet diff-index --quiet HEAD --; then
         echo -e "${_DOT_RED}Error:${_DOT_RESET} Failed to stash local changes (git stash failed)" >&2
         exit 1
     fi
-    $stash_created = true
+    stash_created=true
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Local changes stashed."
 fi
 

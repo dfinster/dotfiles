@@ -294,7 +294,7 @@ _dot_config_reset() {
     local temp_file="${_DOT_CONFIG_FILE}.tmp_${timestamp}"
 
     # Generate new config content using shared function
-    _dot_generate_config_content "${preserved_branch:-main}" "Reset on: $(date)" > "$temp_file"
+    _dot_generate_config_content "main" "Reset on: $(date)" > "$temp_file"
 
     # Verify temp file was created correctly
     if [[ ! -f "$temp_file" ]] || [[ ! -s "$temp_file" ]]; then
@@ -316,11 +316,6 @@ _dot_config_reset() {
     echo -e "  ${_DOT_BLUE}Validating:${_DOT_RESET} New configuration..."
     if _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
         echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} New configuration is valid"
-
-        # Show preserved settings
-        if [[ -n "$preserved_branch" ]]; then
-            echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Preserved branch setting: '$preserved_branch'"
-        fi
 
         echo
         echo -e "${_DOT_GREEN}Success:${_DOT_RESET} Configuration reset completed"
