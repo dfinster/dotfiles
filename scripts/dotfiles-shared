@@ -5,6 +5,7 @@
 
 # Configuration file path
 readonly _DOT_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/dotfiles.conf"
+readonly _DOT_CONFIG_LOCK_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/dotfiles.conf.lock"
 
 # Cache file paths
 readonly _DOT_CACHE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/.last-check"
@@ -17,6 +18,10 @@ readonly _DOT_DEFAULT_NETWORK_TIMEOUT="30"
 readonly _DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE="true"
 readonly _DOT_DEFAULT_AUTO_UPDATE_DOTFILES="true"
 readonly _DOT_GITHUB_URL="https://github.com/dfinster/dotfiles"
+
+# Lock configuration
+readonly _DOT_LOCK_TIMEOUT="10"  # seconds to wait for lock
+readonly _DOT_LOCK_RETRY_INTERVAL="0.1"  # seconds between lock attempts
 
 # Initialize with defaults
 _DOT_SELECTED_BRANCH="$_DOT_DEFAULT_SELECTED_BRANCH"
@@ -128,9 +133,31 @@ _dot_generate_config_content() {
 # Create configuration file template if it doesn't exist
 _dot_create_config_template() {
     if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
-        _dot_generate_config_content > "$_DOT_CONFIG_FILE"
-        echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Created config template at ${_DOT_BLUE}$_DOT_CONFIG_FILE${_DOT_RESET}"
-        echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Edit this file to customize your dotfiles settings"
+        # Use locking for template creation to prevent race conditions
+        _dot_with_config_lock 5 _dot_create_config_template_locked
+    fi
+}
+
+# Internal function to create config template with lock held
+_dot_create_config_template_locked() {
+    # Double-check file doesn't exist (another process might have created it)
+    if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
+        local temp_file="${_DOT_CONFIG_FILE}.tmp.$$"
+        
+        # Generate content to temporary file first
+        if _dot_generate_config_content > "$temp_file"; then
+            # Atomic move to final location
+            if mv "$temp_file" "$_DOT_CONFIG_FILE"; then
+                echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Created config template at ${_DOT_BLUE}$_DOT_CONFIG_FILE${_DOT_RESET}"
+                echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Edit this file to customize your dotfiles settings"
+            else
+                rm -f "$temp_file"
+                return 1
+            fi
+        else
+            rm -f "$temp_file"
+            return 1
+        fi
     fi
 }
 
@@ -205,12 +232,35 @@ _dot_is_config_corrupted() {
     return 0  # not corrupted
 }
 
+# Clean up stale locks (called during reads)
+_dot_cleanup_stale_locks() {
+    if [[ -d "$_DOT_CONFIG_LOCK_FILE" ]]; then
+        local lock_info_file="$_DOT_CONFIG_LOCK_FILE/info"
+        if [[ -f "$lock_info_file" ]]; then
+            local lock_info=$(cat "$lock_info_file" 2>/dev/null || echo "")
+            if [[ -n "$lock_info" ]]; then
+                local lock_timestamp="${lock_info##*:}"
+                if [[ "$lock_timestamp" =~ ^[0-9]+$ ]]; then
+                    local current_time=$(date +%s)
+                    if (( current_time - lock_timestamp > 60 )); then
+                        # Lock is stale, try to remove it
+                        _dot_release_config_lock 2>/dev/null
+                    fi
+                fi
+            fi
+        fi
+    fi
+}
+
 # Load configuration from file and environment variables
 _dot_load_config() {
     # Skip if already loaded recently (within same shell session)
     if [[ -n "$_DOT_CONFIG_LOADED" ]]; then
         return 0
     fi
+
+    # Clean up any stale locks first
+    _dot_cleanup_stale_locks
 
     # Create config template if it doesn't exist
     _dot_create_config_template
@@ -335,6 +385,87 @@ _dot_get_file_mtime() {
     else
         stat -c %Y "$file" 2>/dev/null || echo 0
     fi
+}
+
+# File locking functions for configuration safety
+_dot_acquire_config_lock() {
+    local timeout="${1:-$_DOT_LOCK_TIMEOUT}"
+    local start_time=$(date +%s)
+    local current_time
+    local elapsed
+    
+    # Create lock directory if it doesn't exist
+    local lock_dir="$(dirname "$_DOT_CONFIG_LOCK_FILE")"
+    if [[ ! -d "$lock_dir" ]]; then
+        mkdir -p "$lock_dir" 2>/dev/null || return 1
+    fi
+    
+    while true; do
+        # Try to acquire lock atomically using directory creation
+        if mkdir "$_DOT_CONFIG_LOCK_FILE" 2>/dev/null; then
+            # Store PID and hostname for debugging
+            echo "$$:$(hostname):$(date +%s)" > "$_DOT_CONFIG_LOCK_FILE/info" 2>/dev/null || true
+            return 0
+        fi
+        
+        # Check if lock is stale (older than 60 seconds)
+        if [[ -d "$_DOT_CONFIG_LOCK_FILE" ]]; then
+            local lock_info_file="$_DOT_CONFIG_LOCK_FILE/info"
+            if [[ -f "$lock_info_file" ]]; then
+                local lock_info=$(cat "$lock_info_file" 2>/dev/null || echo "")
+                if [[ -n "$lock_info" ]]; then
+                    local lock_timestamp="${lock_info##*:}"
+                    if [[ "$lock_timestamp" =~ ^[0-9]+$ ]]; then
+                        current_time=$(date +%s)
+                        if (( current_time - lock_timestamp > 60 )); then
+                            # Lock is stale, try to remove it
+                            if _dot_release_config_lock 2>/dev/null; then
+                                continue  # Try to acquire again
+                            fi
+                        fi
+                    fi
+                fi
+            fi
+        fi
+        
+        # Check timeout
+        current_time=$(date +%s)
+        elapsed=$((current_time - start_time))
+        if (( elapsed >= timeout )); then
+            return 1
+        fi
+        
+        # Wait before retry
+        sleep "$_DOT_LOCK_RETRY_INTERVAL"
+    done
+}
+
+_dot_release_config_lock() {
+    if [[ -d "$_DOT_CONFIG_LOCK_FILE" ]]; then
+        rm -rf "$_DOT_CONFIG_LOCK_FILE" 2>/dev/null
+        return $?
+    fi
+    return 0
+}
+
+_dot_with_config_lock() {
+    local timeout="${1:-$_DOT_LOCK_TIMEOUT}"
+    shift
+    
+    if ! _dot_acquire_config_lock "$timeout"; then
+        echo -e "${_DOT_RED}Error:${_DOT_RESET} Could not acquire configuration lock after ${timeout}s" >&2
+        echo -e "${_DOT_RED}Error:${_DOT_RESET} Another dotfiles process may be running" >&2
+        return 1
+    fi
+    
+    # Execute the command with lock held
+    local exit_code=0
+    "$@" || exit_code=$?
+    
+    # Always release lock
+    _dot_release_config_lock
+    
+    return $exit_code
 }
 
 # Common setup function

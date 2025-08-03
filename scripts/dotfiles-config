@@ -101,7 +101,7 @@ _dot_config_edit() {
             }
         fi
 
-        _dot_create_config_template
+        _dot_with_config_lock 10 _dot_create_config_template
         echo
     fi
 
@@ -151,9 +151,10 @@ _dot_config_edit() {
     echo -e "  ${_DOT_YELLOW}Note:${_DOT_RESET} Save and exit editor to continue"
     echo
 
-    # Launch editor and wait for completion
-    if ! "$editor" "$_DOT_CONFIG_FILE"; then
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Editor exited with error" >&2
+    # Launch editor with file lock
+    echo -e "  ${_DOT_BLUE}Acquiring lock for editing...${_DOT_RESET}"
+    if ! _dot_with_config_lock 30 "$editor" "$_DOT_CONFIG_FILE"; then
+        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Editor exited with error or could not acquire lock" >&2
         echo -e "         Configuration may not have been saved properly"
         return 1
     fi
@@ -216,7 +217,7 @@ _dot_config_edit() {
                 ;;
             r|R)
                 echo -e "  ${_DOT_BLUE}Rolling back...${_DOT_RESET}"
-                if mv "$backup_file" "$_DOT_CONFIG_FILE"; then
+                if _dot_with_config_lock 5 _dot_config_reset_atomic "$backup_file"; then
                     echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Configuration restored from backup"
                 else
                     echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to restore from backup" >&2
@@ -233,6 +234,15 @@ _dot_config_edit() {
         esac
     fi
 
+    return 0
+}
+
+# Helper function for atomic config file replacement
+_dot_config_reset_atomic() {
+    local temp_file="$1"
+    if ! mv "$temp_file" "$_DOT_CONFIG_FILE"; then
+        return 1
+    fi
     return 0
 }
 
@@ -255,7 +265,7 @@ _dot_config_reset() {
             }
         fi
 
-        _dot_create_config_template
+        _dot_with_config_lock 10 _dot_create_config_template
         echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Default configuration created"
         return 0
     fi
@@ -303,9 +313,10 @@ _dot_config_reset() {
         return 1
     fi
 
-    # Atomic replacement
-    if ! mv "$temp_file" "$_DOT_CONFIG_FILE"; then
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to replace config file" >&2
+    # Atomic replacement with lock
+    echo -e "  ${_DOT_BLUE}Replacing configuration file...${_DOT_RESET}"
+    if ! _dot_with_config_lock 10 _dot_config_reset_atomic "$temp_file"; then
+        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to replace config file or acquire lock" >&2
         rm -f "$temp_file"
         return 1
     fi
@@ -324,8 +335,8 @@ _dot_config_reset() {
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} New configuration failed validation" >&2
         echo -e "  Restoring from backup..."
 
-        # Restore from backup
-        if mv "$backup_file" "$_DOT_CONFIG_FILE"; then
+        # Restore from backup with lock
+        if _dot_with_config_lock 5 _dot_config_reset_atomic "$backup_file"; then
             echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Configuration restored from backup"
         else
             echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to restore from backup" >&2
