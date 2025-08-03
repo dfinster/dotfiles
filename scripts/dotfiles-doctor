@@ -22,22 +22,28 @@ else
 fi
 
 # Check if dotfiles directory exists
+_dot_debug "DOCTOR" "Checking if dotfiles directory exists: $DOTFILES"
 if [[ ! -d "$DOTFILES" ]]; then
+    _dot_debug "DOCTOR" "Dotfiles directory does not exist"
     echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Dotfiles directory does not exist"
     echo -e "         Path: $DOTFILES"
     echo
     exit 1
 else
+    _dot_debug "DOCTOR" "Dotfiles directory exists and is accessible"
     echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Directory exists and accessible"
 fi
 
 # Check if it's a git repository
+_dot_debug "DOCTOR" "Checking if dotfiles is a git repository"
 if ! _dot_git_quiet rev-parse --git-dir; then
+    _dot_debug "DOCTOR" "Not a git repository"
     echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Not a git repository"
     echo -e "         Run 'git init' in $DOTFILES"
     echo
     exit 1
 else
+    _dot_debug "DOCTOR" "Git repository detected"
     echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Git repository detected"
 fi
 

@@ -89,13 +89,17 @@ _dot_config_edit() {
     echo
 
     # Ensure config file exists
+    _dot_debug "CONFIG_EDIT" "Checking if config file exists: $_DOT_CONFIG_FILE"
     if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
+        _dot_debug "CONFIG_EDIT" "Config file doesn't exist, creating default"
         echo -e "  ${_DOT_YELLOW}Info:${_DOT_RESET} Config file does not exist, creating default..."
 
         # Ensure parent directory exists
         local config_dir="$(dirname "$_DOT_CONFIG_FILE")"
+        _dot_debug "CONFIG_EDIT" "Ensuring config directory exists: $config_dir"
         if [[ ! -d "$config_dir" ]]; then
             mkdir -p "$config_dir" || {
+                _dot_debug "CONFIG_EDIT" "Failed to create config directory"
                 echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Cannot create config directory: $config_dir" >&2
                 return 1
             }

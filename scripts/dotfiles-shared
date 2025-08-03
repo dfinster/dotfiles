@@ -63,10 +63,12 @@ readonly _DOT_GREEN='\033[92m'
 readonly _DOT_BLUE='\033[94m'
 readonly _DOT_RESET='\033[0m'
 
-# Debug logging function
-_dot_lock_debug() {
-    [[ -n "$DOTFILES_DEBUG_LOCKS" ]] || return 0
-    echo "[LOCK DEBUG] $*" >&2
+# Generic debug logging function
+_dot_debug() {
+    [[ -n "$DOTFILES_DEBUG" ]] || return 0
+    local category="${1:-GENERAL}"
+    shift
+    echo "[DEBUG:$category] $*" >&2
 }
 
 # Shared validation helper functions
@@ -270,19 +272,24 @@ _dot_cleanup_stale_locks() {
 
 # Load configuration from file and environment variables
 _dot_load_config() {
+    _dot_debug "CONFIG" "Loading configuration"
     # Skip if already loaded recently (within same shell session)
     if [[ -n "$_DOT_CONFIG_LOADED" ]]; then
+        _dot_debug "CONFIG" "Config already loaded, skipping reload"
         return 0
     fi
 
     # Clean up any stale locks first
+    _dot_debug "CONFIG" "Cleaning up stale locks"
     _dot_cleanup_stale_locks
 
     # Create config template if it doesn't exist
     _dot_create_config_template
 
     # Check for corruption and recover if needed
+    _dot_debug "CONFIG" "Checking for config corruption"
     if [[ -f "$_DOT_CONFIG_FILE" ]] && ! _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
+        _dot_debug "CONFIG" "Config file is corrupted, recovering"
         # Show warning once per shell session during interactive startup
         if [[ -z "$_DOT_CONFIG_WARNED" ]]; then
             echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted, please run: ${_DOT_GREEN}dotfiles config help${_DOT_RESET}" >&2
@@ -377,14 +384,18 @@ _dot_git_quiet() {
 
 # Git command wrappers with network timeout support
 _dot_git_with_timeout() {
+    _dot_debug "GIT" "Running git command with timeout ${_DOT_NETWORK_TIMEOUT}s: $*"
     # Apply timeout to network operations (caller ensures this is only used for network ops)
     if command -v timeout >/dev/null 2>&1; then
+        _dot_debug "GIT" "Using 'timeout' command"
         timeout "${_DOT_NETWORK_TIMEOUT}s" git -C "$DOTFILES" "$@"
     elif command -v gtimeout >/dev/null 2>&1; then
         # macOS with GNU coreutils
+        _dot_debug "GIT" "Using 'gtimeout' command"
         gtimeout "${_DOT_NETWORK_TIMEOUT}s" git -C "$DOTFILES" "$@"
     else
         # Fallback without timeout on systems that don't have it
+        _dot_debug "GIT" "No timeout command available, using fallback"
         _dot_git "$@"
     fi
 }
@@ -412,8 +423,8 @@ _dot_acquire_config_lock() {
     local next_time_update=$((start_time + 1))
     local elapsed
     
-    _dot_lock_debug "Attempting to acquire lock with timeout: $timeout"
-    _dot_lock_debug "Lock file: $_DOT_CONFIG_LOCK_FILE"
+    _dot_debug "LOCK" "Attempting to acquire lock with timeout: $timeout"
+    _dot_debug "LOCK" "Lock file: $_DOT_CONFIG_LOCK_FILE"
     
     # Validate timeout input
     [[ "$timeout" =~ ^[0-9]+$ ]] || {
@@ -441,7 +452,7 @@ _dot_acquire_config_lock() {
         if mkdir "$_DOT_CONFIG_LOCK_FILE" 2>/dev/null; then
             # Store PID, hostname and timestamp for debugging
             echo "$$:$hostname_cache:$current_time" > "$_DOT_CONFIG_LOCK_FILE/info" 2>/dev/null || true
-            _dot_lock_debug "Lock acquired successfully"
+            _dot_debug "LOCK" "Lock acquired successfully"
             return 0
         fi
         
@@ -449,11 +460,11 @@ _dot_acquire_config_lock() {
         if [[ -d "$_DOT_CONFIG_LOCK_FILE" ]]; then
             local lock_info_file="$_DOT_CONFIG_LOCK_FILE/info"
             if _dot_is_lock_stale "$lock_info_file" "$_DOT_LOCK_STALE_TIMEOUT" "$current_time"; then
-                _dot_lock_debug "Detected stale lock, attempting cleanup and retry"
+                _dot_debug "LOCK" "Detected stale lock, attempting cleanup and retry"
                 # Lock is stale, try atomic cleanup and immediate retry
                 if _dot_release_config_lock 2>/dev/null && mkdir "$_DOT_CONFIG_LOCK_FILE" 2>/dev/null; then
                     echo "$$:$hostname_cache:$current_time" > "$_DOT_CONFIG_LOCK_FILE/info" 2>/dev/null || true
-                    _dot_lock_debug "Lock acquired after stale cleanup"
+                    _dot_debug "LOCK" "Lock acquired after stale cleanup"
                     return 0
                 fi
             fi
@@ -462,7 +473,7 @@ _dot_acquire_config_lock() {
         # Check timeout
         elapsed=$((current_time - start_time))
         if (( elapsed >= timeout )); then
-            _dot_lock_debug "Lock acquisition timed out after ${elapsed}s"
+            _dot_debug "LOCK" "Lock acquisition timed out after ${elapsed}s"
             return 1
         fi
         
@@ -473,16 +484,16 @@ _dot_acquire_config_lock() {
 
 _dot_release_config_lock() {
     if [[ -d "$_DOT_CONFIG_LOCK_FILE" ]]; then
-        _dot_lock_debug "Releasing lock: $_DOT_CONFIG_LOCK_FILE"
+        _dot_debug "LOCK" "Releasing lock: $_DOT_CONFIG_LOCK_FILE"
         if rm -rf "$_DOT_CONFIG_LOCK_FILE" 2>/dev/null; then
-            _dot_lock_debug "Lock released successfully"
+            _dot_debug "LOCK" "Lock released successfully"
             return 0
         else
-            _dot_lock_debug "Failed to release lock"
+            _dot_debug "LOCK" "Failed to release lock"
             return 1
         fi
     fi
-    _dot_lock_debug "No lock to release"
+    _dot_debug "LOCK" "No lock to release"
     return 0
 }
 
@@ -545,23 +556,32 @@ _dot_with_config_lock() {
 
 # Common setup function
 _dot_setup() {
+    _dot_debug "SETUP" "Starting dotfiles setup process"
     # Load configuration, exit early if corrupted
+    _dot_debug "SETUP" "Loading configuration"
     if ! _dot_load_config; then
+        _dot_debug "SETUP" "Failed to load configuration"
         return 1
     fi
 
     # Exit early if DOTFILES environment variable is not set
+    _dot_debug "SETUP" "Checking DOTFILES environment variable: ${DOTFILES:-<not set>}"
     if [[ -z "$DOTFILES" ]]; then
+        _dot_debug "SETUP" "DOTFILES environment variable not set"
         return 1
     fi
 
     # Exit early if dotfiles directory doesn't exist
+    _dot_debug "SETUP" "Checking if dotfiles directory exists: $DOTFILES"
     if [[ ! -d "$DOTFILES" ]]; then
+        _dot_debug "SETUP" "Dotfiles directory does not exist"
         return 1
     fi
 
     # Exit early if $DOTFILES is not a git repository
+    _dot_debug "SETUP" "Checking if dotfiles is a git repository"
     if ! _dot_git_quiet rev-parse --git-dir; then
+        _dot_debug "SETUP" "Dotfiles is not a git repository"
         return 1
     fi
 
@@ -569,7 +589,10 @@ _dot_setup() {
     _DOT_TARGET_BRANCH="$_DOT_SELECTED_BRANCH"
 
     # Get current branch
+    _dot_debug "SETUP" "Getting current git branch"
     _DOT_CURRENT_BRANCH=$(_dot_git branch --show-current)
+    _dot_debug "SETUP" "Current branch: $_DOT_CURRENT_BRANCH, Target branch: $_DOT_TARGET_BRANCH"
+    _dot_debug "SETUP" "Setup completed successfully"
 
     return 0
 }

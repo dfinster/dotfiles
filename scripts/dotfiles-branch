@@ -34,20 +34,26 @@ if ! _dot_git_with_timeout_quiet ls-remote origin; then
 fi
 
 # Verify branch exists on remote GitHub repository
+_dot_debug "BRANCH" "Verifying branch '$new_branch' exists on remote"
 echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Checking if branch ${_DOT_BLUE}'$new_branch'${_DOT_RESET} exists on GitHub..."
 if ! _dot_git_with_timeout_quiet ls-remote --exit-code --heads origin "$new_branch"; then
+    _dot_debug "BRANCH" "Branch '$new_branch' not found on remote"
     echo -e "${_DOT_RED}Error:${_DOT_RESET} Branch '$new_branch' does not exist on GitHub" >&2
     exit 1
 fi
+_dot_debug "BRANCH" "Branch '$new_branch' verified on remote"
 
 # Update default branch in configuration file
+_dot_debug "BRANCH" "Updating config file with new branch: $new_branch"
 echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Updating default branch to ${_DOT_BLUE}'$new_branch'${_DOT_RESET} in config file..."
 
 # Ensure config file exists
 _dot_create_config_template
 
 # Check if file is writable
+_dot_debug "BRANCH" "Checking config file writability: $_DOT_CONFIG_FILE"
 if [[ ! -w "$_DOT_CONFIG_FILE" ]]; then
+    _dot_debug "BRANCH" "Config file is not writable"
     echo -e "${_DOT_RED}Error:${_DOT_RESET} Cannot write to $_DOT_CONFIG_FILE" >&2
     exit 1
 fi
