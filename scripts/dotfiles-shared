@@ -22,6 +22,8 @@ readonly _DOT_GITHUB_URL="https://github.com/dfinster/dotfiles"
 # Lock configuration
 readonly _DOT_LOCK_TIMEOUT="10"  # seconds to wait for lock
 readonly _DOT_LOCK_RETRY_INTERVAL="0.1"  # seconds between lock attempts
+readonly _DOT_LOCK_STALE_TIMEOUT="60"  # seconds before lock considered stale
+readonly _DOT_LOCK_MAX_WAIT="300"  # maximum wait time for any lock operation
 
 # Initialize with defaults
 _DOT_SELECTED_BRANCH="$_DOT_DEFAULT_SELECTED_BRANCH"
@@ -60,6 +62,12 @@ readonly _DOT_YELLOW='\033[93m'
 readonly _DOT_GREEN='\033[92m'
 readonly _DOT_BLUE='\033[94m'
 readonly _DOT_RESET='\033[0m'
+
+# Debug logging function
+_dot_lock_debug() {
+    [[ -n "$DOTFILES_DEBUG_LOCKS" ]] || return 0
+    echo "[LOCK DEBUG] $*" >&2
+}
 
 # Shared validation helper functions
 _dot_trim_whitespace() {
@@ -232,22 +240,30 @@ _dot_is_config_corrupted() {
     return 0  # not corrupted
 }
 
+# Check if a lock is stale based on timestamp
+_dot_is_lock_stale() {
+    local lock_info_file="$1"
+    local stale_threshold="${2:-$_DOT_LOCK_STALE_TIMEOUT}"
+    local current_time="${3:-$(date +%s)}"
+    
+    [[ -f "$lock_info_file" ]] || return 1
+    
+    local lock_info=$(cat "$lock_info_file" 2>/dev/null || echo "")
+    [[ -n "$lock_info" ]] || return 1
+    
+    local lock_timestamp="${lock_info##*:}"
+    [[ "$lock_timestamp" =~ ^[0-9]+$ ]] || return 1
+    
+    (( current_time - lock_timestamp > stale_threshold ))
+}
+
 # Clean up stale locks (called during reads)
 _dot_cleanup_stale_locks() {
     if [[ -d "$_DOT_CONFIG_LOCK_FILE" ]]; then
         local lock_info_file="$_DOT_CONFIG_LOCK_FILE/info"
-        if [[ -f "$lock_info_file" ]]; then
-            local lock_info=$(cat "$lock_info_file" 2>/dev/null || echo "")
-            if [[ -n "$lock_info" ]]; then
-                local lock_timestamp="${lock_info##*:}"
-                if [[ "$lock_timestamp" =~ ^[0-9]+$ ]]; then
-                    local current_time=$(date +%s)
-                    if (( current_time - lock_timestamp > 60 )); then
-                        # Lock is stale, try to remove it
-                        _dot_release_config_lock 2>/dev/null
-                    fi
-                fi
-            fi
+        if _dot_is_lock_stale "$lock_info_file"; then
+            # Lock is stale, try to remove it
+            _dot_release_config_lock 2>/dev/null
         fi
     fi
 }
@@ -391,47 +407,62 @@ _dot_get_file_mtime() {
 _dot_acquire_config_lock() {
     local timeout="${1:-$_DOT_LOCK_TIMEOUT}"
     local start_time=$(date +%s)
-    local current_time
+    local current_time="$start_time"
+    local hostname_cache="$(hostname)"
+    local next_time_update=$((start_time + 1))
     local elapsed
+    
+    _dot_lock_debug "Attempting to acquire lock with timeout: $timeout"
+    _dot_lock_debug "Lock file: $_DOT_CONFIG_LOCK_FILE"
+    
+    # Validate timeout input
+    [[ "$timeout" =~ ^[0-9]+$ ]] || {
+        echo "Error: Invalid timeout value: $timeout" >&2
+        return 1
+    }
     
     # Create lock directory if it doesn't exist
     local lock_dir="$(dirname "$_DOT_CONFIG_LOCK_FILE")"
     if [[ ! -d "$lock_dir" ]]; then
-        mkdir -p "$lock_dir" 2>/dev/null || return 1
+        if ! mkdir -p "$lock_dir" 2>/dev/null; then
+            echo "Error: Cannot create lock directory: $lock_dir" >&2
+            return 1
+        fi
     fi
     
     while true; do
+        # Update current time periodically (not every iteration)
+        if (( current_time >= next_time_update )); then
+            current_time=$(date +%s)
+            next_time_update=$((current_time + 1))
+        fi
+        
         # Try to acquire lock atomically using directory creation
         if mkdir "$_DOT_CONFIG_LOCK_FILE" 2>/dev/null; then
-            # Store PID and hostname for debugging
-            echo "$$:$(hostname):$(date +%s)" > "$_DOT_CONFIG_LOCK_FILE/info" 2>/dev/null || true
+            # Store PID, hostname and timestamp for debugging
+            echo "$$:$hostname_cache:$current_time" > "$_DOT_CONFIG_LOCK_FILE/info" 2>/dev/null || true
+            _dot_lock_debug "Lock acquired successfully"
             return 0
         fi
         
-        # Check if lock is stale (older than 60 seconds)
+        # Check if lock is stale using shared function
         if [[ -d "$_DOT_CONFIG_LOCK_FILE" ]]; then
             local lock_info_file="$_DOT_CONFIG_LOCK_FILE/info"
-            if [[ -f "$lock_info_file" ]]; then
-                local lock_info=$(cat "$lock_info_file" 2>/dev/null || echo "")
-                if [[ -n "$lock_info" ]]; then
-                    local lock_timestamp="${lock_info##*:}"
-                    if [[ "$lock_timestamp" =~ ^[0-9]+$ ]]; then
-                        current_time=$(date +%s)
-                        if (( current_time - lock_timestamp > 60 )); then
-                            # Lock is stale, try to remove it
-                            if _dot_release_config_lock 2>/dev/null; then
-                                continue  # Try to acquire again
-                            fi
-                        fi
-                    fi
+            if _dot_is_lock_stale "$lock_info_file" "$_DOT_LOCK_STALE_TIMEOUT" "$current_time"; then
+                _dot_lock_debug "Detected stale lock, attempting cleanup and retry"
+                # Lock is stale, try atomic cleanup and immediate retry
+                if _dot_release_config_lock 2>/dev/null && mkdir "$_DOT_CONFIG_LOCK_FILE" 2>/dev/null; then
+                    echo "$$:$hostname_cache:$current_time" > "$_DOT_CONFIG_LOCK_FILE/info" 2>/dev/null || true
+                    _dot_lock_debug "Lock acquired after stale cleanup"
+                    return 0
                 fi
             fi
         fi
         
         # Check timeout
-        current_time=$(date +%s)
         elapsed=$((current_time - start_time))
         if (( elapsed >= timeout )); then
+            _dot_lock_debug "Lock acquisition timed out after ${elapsed}s"
             return 1
         fi
         
@@ -442,10 +473,54 @@ _dot_acquire_config_lock() {
 
 _dot_release_config_lock() {
     if [[ -d "$_DOT_CONFIG_LOCK_FILE" ]]; then
-        rm -rf "$_DOT_CONFIG_LOCK_FILE" 2>/dev/null
-        return $?
+        _dot_lock_debug "Releasing lock: $_DOT_CONFIG_LOCK_FILE"
+        if rm -rf "$_DOT_CONFIG_LOCK_FILE" 2>/dev/null; then
+            _dot_lock_debug "Lock released successfully"
+            return 0
+        else
+            _dot_lock_debug "Failed to release lock"
+            return 1
+        fi
     fi
+    _dot_lock_debug "No lock to release"
     return 0
+}
+
+# Show lock statistics for debugging
+_dot_lock_stats() {
+    if [[ -d "$_DOT_CONFIG_LOCK_FILE" ]]; then
+        local info_file="$_DOT_CONFIG_LOCK_FILE/info"
+        if [[ -f "$info_file" ]]; then
+            local lock_info=$(cat "$info_file" 2>/dev/null || echo "")
+            if [[ -n "$lock_info" ]]; then
+                local lock_pid="${lock_info%%:*}"
+                local lock_host_time="${lock_info#*:}"
+                local lock_host="${lock_host_time%:*}"
+                local lock_timestamp="${lock_info##*:}"
+                
+                echo "Current lock information:"
+                echo "  PID: $lock_pid"
+                echo "  Host: $lock_host"
+                echo "  Timestamp: $lock_timestamp"
+                if [[ "$lock_timestamp" =~ ^[0-9]+$ ]]; then
+                    local current_time=$(date +%s)
+                    local lock_age=$((current_time - lock_timestamp))
+                    echo "  Age: ${lock_age} seconds"
+                    if (( lock_age > _DOT_LOCK_STALE_TIMEOUT )); then
+                        echo "  Status: STALE"
+                    else
+                        echo "  Status: Active"
+                    fi
+                fi
+            else
+                echo "Lock directory exists but no info available"
+            fi
+        else
+            echo "Lock directory exists but no info file"
+        fi
+    else
+        echo "No active lock"
+    fi
 }
 
 _dot_with_config_lock() {
