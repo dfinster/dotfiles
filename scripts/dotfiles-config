@@ -18,23 +18,23 @@ _dot_config_show() {
     # Display config file location
     echo -e "  ${_DOT_BLUE}Config file:${_DOT_RESET} $_DOT_CONFIG_FILE"
 
-    # Validate config file
-    if ! _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
-        echo
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Config file is corrupted"
-        echo -e "         Run ${_DOT_GREEN}dotfiles config edit${_DOT_RESET} to correct it"
-        echo -e "         or ${_DOT_GREEN}dotfiles config reset${_DOT_RESET} to restore defaults"
-        return 1
-    fi
+    # # Validate config file
+    # if ! _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
+    #     echo
+    #     echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Config file is corrupted"
+    #     echo -e "         Run ${_DOT_GREEN}dotfiles config edit${_DOT_RESET} to correct it"
+    #     echo -e "         or ${_DOT_GREEN}dotfiles config reset${_DOT_RESET} to restore defaults"
+    #     return 1
+    # fi
 
-    # Check if config file exists and is readable
-    if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
-        echo -e "  ${_DOT_YELLOW}Status:${_DOT_RESET} File does not exist (using defaults)"
-    elif [[ ! -r "$_DOT_CONFIG_FILE" ]]; then
-        echo -e "  ${_DOT_YELLOW}Status:${_DOT_RESET} File not readable (using defaults)"
-    else
-        echo -e "  ${_DOT_GREEN}Status:${_DOT_RESET} File exists and readable"
-    fi
+    # # Check if config file exists and is readable
+    # if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
+    #     echo -e "  ${_DOT_YELLOW}Status:${_DOT_RESET} File does not exist (using defaults)"
+    # elif [[ ! -r "$_DOT_CONFIG_FILE" ]]; then
+    #     echo -e "  ${_DOT_YELLOW}Status:${_DOT_RESET} File not readable (using defaults)"
+    # else
+    #     echo -e "  ${_DOT_GREEN}Status:${_DOT_RESET} File exists and readable"
+    # fi
 
     echo
     echo -e "${_DOT_BLUE}Settings:${_DOT_RESET}"

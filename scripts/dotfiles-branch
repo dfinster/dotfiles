@@ -27,12 +27,6 @@ if ! _dot_setup; then
     exit 1
 fi
 
-# Check network connectivity
-if ! _dot_git_with_timeout_quiet ls-remote origin; then
-    echo -e "${_DOT_RED}Error:${_DOT_RESET} Cannot connect to GitHub" >&2
-    exit 1
-fi
-
 # Verify branch exists on remote GitHub repository
 echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Checking if branch ${_DOT_BLUE}'$new_branch'${_DOT_RESET} exists on GitHub..."
 if ! _dot_git_with_timeout_quiet ls-remote --exit-code --heads origin "$new_branch"; then
@@ -43,34 +37,22 @@ fi
 # Update default branch in configuration file
 echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Updating default branch to ${_DOT_BLUE}'$new_branch'${_DOT_RESET} in config file..."
 
-# Ensure config file exists
+# Ensure config is valid
 _dot_config verify
 
-# Check if file is writable
-if [[ ! -w "$_DOT_CONFIG_FILE" ]]; then
-    echo -e "${_DOT_RED}Error:${_DOT_RESET} Cannot write to $_DOT_CONFIG_FILE" >&2
-    exit 1
-fi
-
+# Create new config with updated value
 # Atomic config update using temporary file
 temp_file=$(mktemp)
 updated=false
-# Create new config with updated value
-if [[ -f "$_DOT_CONFIG_FILE" ]]; then
-    # Process existing config line by line
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if [[ "$line" =~ ^[[:space:]]*selected_branch[[:space:]]*= ]]; then
-            echo "selected_branch=$new_branch"
-            updated=true
-        else
-            echo "$line"
-        fi
-    done < "$_DOT_CONFIG_FILE" > "$temp_file"
-fi
-# Add selected_branch if it wasn't found in existing config
-if [[ "$updated" == "false" ]]; then
-    echo "selected_branch=$new_branch" >> "$temp_file"
-fi
+# Process existing config line by line
+while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$line" =~ ^[[:space:]]*selected_branch[[:space:]]*= ]]; then
+        echo "selected_branch=$new_branch"
+        updated=true
+    else
+        echo "$line"
+    fi
+done < "$_DOT_CONFIG_FILE" > "$temp_file"
 
 # Atomically replace the original file
 if ! mv "$temp_file" "$_DOT_CONFIG_FILE"; then

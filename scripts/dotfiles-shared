@@ -126,7 +126,7 @@ _dot_config() {
                     echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Using default configuration." >&2
                     export _DOT_CONFIG_WARNED=1
                 fi
-                return 1
+                exit 1 # Corrupted, exit with error
             fi
             return 0 # Exists, not corrupted, no action needed
         else
@@ -138,7 +138,7 @@ _dot_config() {
         echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Resetting configuration to default."
     else
         echo -e "${_DOT_RED}Error:${_DOT_RESET} Invalid mode: $mode" >&2
-        return 1
+        exit 1 # Exit with error
     fi
 
     # Create temporary file for atomic replacement
@@ -159,14 +159,14 @@ _dot_config() {
     if [[ ! -f "$temp_file" ]] || [[ ! -s "$temp_file" ]]; then
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to create temporary config file." >&2
         rm -f "$temp_file"
-        return 1
+        exit 1 # Exit with error
     fi
 
     # Atomic replacement
     if ! mv "$temp_file" "$_DOT_CONFIG_FILE"; then
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to replace config file." >&2
         rm -f "$temp_file"
-        return 1
+        exit 1 # Exit with error
     fi
 
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} New config created."
