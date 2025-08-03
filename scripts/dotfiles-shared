@@ -107,31 +107,70 @@ _dot_validate_config_value() {
     return 0
 }
 
-# Generate config file content - DRY shared function
-_dot_generate_config_content() {
-    local branch_override="${1:-$_DOT_DEFAULT_SELECTED_BRANCH}"
-    local comment_line="${2:-}"
+# Verify or reset config template
+_dot_config() {
 
-    echo "# Dotfiles Configuration"
-    echo "# This file is not tracked in git and contains user-specific settings"
-    if [[ -n "$comment_line" ]]; then
-        echo "# $comment_line"
-    fi
-    echo
-    echo "auto_update_dotfiles=$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES"
-    echo "auto_update_antidote=$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE"
-    echo "selected_branch=$branch_override"
-    echo "cache_duration=$_DOT_DEFAULT_CACHE_DURATION"
-    echo "network_timeout=$_DOT_DEFAULT_NETWORK_TIMEOUT"
-}
+    # Ensure parent directory exists
+    local config_dir="$(dirname "$_DOT_CONFIG_FILE")"
+    local mode="$1"
 
-# Create configuration file template if it doesn't exist
-_dot_create_config_template() {
-    if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
-        _dot_generate_config_content > "$_DOT_CONFIG_FILE"
-        echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Created config template at ${_DOT_BLUE}$_DOT_CONFIG_FILE${_DOT_RESET}"
-        echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Edit this file to customize your dotfiles settings"
+    if "$mode" == "verify"; then
+        if [[ -f "$_DOT_CONFIG_FILE" ]]; then
+            # Config file already exists
+            # Check for corruption
+            if _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
+                # Show warning once per shell session during interactive startup
+                if [[ -z "$_DOT_CONFIG_WARNED" ]]; then
+                    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted, please run ${_DOT_GREEN}dotfiles edit${_DOT_RESET}" >&2
+                    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} or ${_DOT_GREEN}dotfiles reset${_DOT_RESET}" >&2
+                    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Using default configuration." >&2
+                    export _DOT_CONFIG_WARNED=1
+                fi
+                return 1
+            fi
+            return 0 # Exists, not corrupted, no action needed
+        else
+            echo -e "  ${_DOT_YELLOW}Info:${_DOT_RESET} Config file does not exist, creating default."
+        fi
+    elif "$mode" == "reset"; then
+        # Reset config file to default
+        local timestamp=$(date +%Y%m%d%H%M%S)
+        echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Resetting configuration to default."
+    else
+        echo -e "${_DOT_RED}Error:${_DOT_RESET} Invalid mode: $mode" >&2
+        return 1
     fi
+
+    # Create temporary file for atomic replacement
+    local temp_file="${_DOT_CONFIG_FILE}.tmp_${timestamp}"
+
+    # Generate config file content
+    echo "# Dotfiles Configuration" > "$temp_file"
+    echo "# This file is not tracked in git and contains user-specific settings" >> "$temp_file"
+    echo "# You can edit this file to customize your dotfiles settings" >> $temp_file
+    echo >> "$temp_file"
+    echo "auto_update_dotfiles=$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES" >> "$temp_file"
+    echo "auto_update_antidote=$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE" >> "$temp_file"
+    echo "selected_branch=$_DOT_DEFAULT_SELECTED_BRANCH" >> "$temp_file"
+    echo "cache_duration=$_DOT_DEFAULT_CACHE_DURATION"  >> "$temp_file"
+    echo "network_timeout=$_DOT_DEFAULT_NETWORK_TIMEOUT" >> "$temp_file"
+
+    # Verify temp file was created correctly
+    if [[ ! -f "$temp_file" ]] || [[ ! -s "$temp_file" ]]; then
+        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to create temporary config file." >&2
+        rm -f "$temp_file"
+        return 1
+    fi
+
+    # Atomic replacement
+    if ! mv "$temp_file" "$_DOT_CONFIG_FILE"; then
+        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to replace config file." >&2
+        rm -f "$temp_file"
+        return 1
+    fi
+
+    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} New config created."
+    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Edit ${_DOT_BLUE}$_DOT_CONFIG_FILE${_DOT_RESET} to customize your settings."
 }
 
 # Check if config file is corrupted
@@ -212,19 +251,8 @@ _dot_load_config() {
         return 0
     fi
 
-    # Create config template if it doesn't exist
-    _dot_create_config_template
-
-    # Check for corruption and recover if needed
-    if [[ -f "$_DOT_CONFIG_FILE" ]] && ! _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
-        # Show warning once per shell session during interactive startup
-        if [[ -z "$_DOT_CONFIG_WARNED" ]]; then
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted, please run: ${_DOT_GREEN}dotfiles config help${_DOT_RESET}" >&2
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Using default configuration." >&2
-            export _DOT_CONFIG_WARNED=1
-        fi
-        return 1
-    fi
+    # Check config
+    _dot_config verify
 
     # Load from config file if it exists
     if [[ -f "$_DOT_CONFIG_FILE" ]]; then
@@ -259,45 +287,8 @@ _dot_load_config() {
         done < "$_DOT_CONFIG_FILE"
     fi
 
-    # Validate and sanitize loaded configuration values
-    _dot_validate_config
-
     # Mark as loaded for this session
     export _DOT_CONFIG_LOADED=1
-}
-
-# Validate and reset invalid config values to defaults
-_dot_validate_config() {
-    # Validate each config key and reset to default if invalid
-    if ! _dot_validate_config_value "selected_branch" "$_DOT_SELECTED_BRANCH"; then
-        [[ "$_DOT_SELECTED_BRANCH" != "$_DOT_DEFAULT_SELECTED_BRANCH" ]] && \
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid selected_branch '$_DOT_SELECTED_BRANCH', using default '$_DOT_DEFAULT_SELECTED_BRANCH'" >&2
-        _DOT_SELECTED_BRANCH="$_DOT_DEFAULT_SELECTED_BRANCH"
-    fi
-
-    if ! _dot_validate_config_value "cache_duration" "$_DOT_CACHE_DURATION"; then
-        [[ "$_DOT_CACHE_DURATION" != "$_DOT_DEFAULT_CACHE_DURATION" ]] && \
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid cache_duration '$_DOT_CACHE_DURATION', using default '$_DOT_DEFAULT_CACHE_DURATION'" >&2
-        _DOT_CACHE_DURATION="$_DOT_DEFAULT_CACHE_DURATION"
-    fi
-
-    if ! _dot_validate_config_value "network_timeout" "$_DOT_NETWORK_TIMEOUT"; then
-        [[ "$_DOT_NETWORK_TIMEOUT" != "$_DOT_DEFAULT_NETWORK_TIMEOUT" ]] && \
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid network_timeout '$_DOT_NETWORK_TIMEOUT', using default '$_DOT_DEFAULT_NETWORK_TIMEOUT'" >&2
-        _DOT_NETWORK_TIMEOUT="$_DOT_DEFAULT_NETWORK_TIMEOUT"
-    fi
-
-    if ! _dot_validate_config_value "auto_update_antidote" "$_DOT_AUTO_UPDATE_ANTIDOTE"; then
-        [[ "$_DOT_AUTO_UPDATE_ANTIDOTE" != "$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE" ]] && \
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid auto_update_antidote '$_DOT_AUTO_UPDATE_ANTIDOTE', using default '$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE'" >&2
-        _DOT_AUTO_UPDATE_ANTIDOTE="$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE"
-    fi
-
-    if ! _dot_validate_config_value "auto_update_dotfiles" "$_DOT_AUTO_UPDATE_DOTFILES"; then
-        [[ "$_DOT_AUTO_UPDATE_DOTFILES" != "$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES" ]] && \
-            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Invalid auto_update_dotfiles '$_DOT_AUTO_UPDATE_DOTFILES', using default '$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES'" >&2
-        _DOT_AUTO_UPDATE_DOTFILES="$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES"
-    fi
 }
 
 # Git command wrappers to eliminate repetition

@@ -89,21 +89,7 @@ _dot_config_edit() {
     echo
 
     # Ensure config file exists
-    if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
-        echo -e "  ${_DOT_YELLOW}Info:${_DOT_RESET} Config file does not exist, creating default..."
-
-        # Ensure parent directory exists
-        local config_dir="$(dirname "$_DOT_CONFIG_FILE")"
-        if [[ ! -d "$config_dir" ]]; then
-            mkdir -p "$config_dir" || {
-                echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Cannot create config directory: $config_dir" >&2
-                return 1
-            }
-        fi
-
-        _dot_create_config_template
-        echo
-    fi
+    _dot_config verify
 
     # Detect available editor
     local editor=""
@@ -241,99 +227,21 @@ _dot_config_reset() {
     echo -e "${_DOT_BLUE}Configuration Reset:${_DOT_RESET}"
     echo
 
-    # Check if config file exists
-    if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
-        echo -e "  ${_DOT_YELLOW}Info:${_DOT_RESET} Config file does not exist"
-        echo -e "        Creating default configuration..."
-
-        # Ensure parent directory exists
-        local config_dir="$(dirname "$_DOT_CONFIG_FILE")"
-        if [[ ! -d "$config_dir" ]]; then
-            mkdir -p "$config_dir" || {
-                echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Cannot create config directory: $config_dir" >&2
-                return 1
-            }
-        fi
-
-        _dot_create_config_template
-        echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Default configuration created"
-        return 0
-    fi
-
-    # Show current config status
-    echo -e "  ${_DOT_BLUE}Current config:${_DOT_RESET} $_DOT_CONFIG_FILE"
-    local file_size=$(wc -c < "$_DOT_CONFIG_FILE" 2>/dev/null || echo "0")
-    echo -e "  ${_DOT_BLUE}File size:${_DOT_RESET} $file_size bytes"
-    echo
-
     # Confirmation prompt
-    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} This will reset all configuration to defaults."
-    echo -e "         A backup will be created with timestamp."
+    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} This will reset configuration to default."
     echo
     echo -n "Continue with reset? [y/N]: "
     read -r REPLY
     echo
 
     if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
-        echo -e "  ${_DOT_YELLOW}Cancelled:${_DOT_RESET} Configuration reset aborted"
+        echo -e "  ${_DOT_BLUE}Info:${_DOT_RESET} Configuration was not reset."
         return 0
     fi
 
-    # Create timestamped backup
-    local timestamp=$(date "+%Y%m%d_%H%M%S")
-    local backup_file="${_DOT_CONFIG_FILE}.backup_${timestamp}"
-
-    echo -e "  ${_DOT_BLUE}Creating backup...${_DOT_RESET}"
-    if ! cp "$_DOT_CONFIG_FILE" "$backup_file"; then
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to create backup" >&2
-        return 1
-    fi
-    echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Backup created successfully"
-
-    # Create temporary file for atomic replacement
-    local temp_file="${_DOT_CONFIG_FILE}.tmp_${timestamp}"
-
     # Generate new config content using shared function
-    _dot_generate_config_content "main" "Reset on: $(date)" > "$temp_file"
+    _dot_config reset
 
-    # Verify temp file was created correctly
-    if [[ ! -f "$temp_file" ]] || [[ ! -s "$temp_file" ]]; then
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to create temporary config file" >&2
-        rm -f "$temp_file"
-        return 1
-    fi
-
-    # Atomic replacement
-    if ! mv "$temp_file" "$_DOT_CONFIG_FILE"; then
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to replace config file" >&2
-        rm -f "$temp_file"
-        return 1
-    fi
-
-    echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Configuration reset to defaults"
-
-    # Validate the new configuration
-    echo -e "  ${_DOT_BLUE}Validating:${_DOT_RESET} New configuration..."
-    if _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
-        echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} New configuration is valid"
-
-        echo
-        echo -e "${_DOT_GREEN}Success:${_DOT_RESET} Configuration reset completed"
-        echo -e "${_DOT_GREEN}Backup saved as:${_DOT_RESET} $backup_file"
-    else
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} New configuration failed validation" >&2
-        echo -e "  Restoring from backup..."
-
-        # Restore from backup
-        if mv "$backup_file" "$_DOT_CONFIG_FILE"; then
-            echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} Configuration restored from backup"
-        else
-            echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to restore from backup" >&2
-        fi
-        return 1
-    fi
-
-    echo
     _dot_config_show
 
     return 0

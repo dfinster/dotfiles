@@ -44,7 +44,7 @@ fi
 echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Updating default branch to ${_DOT_BLUE}'$new_branch'${_DOT_RESET} in config file..."
 
 # Ensure config file exists
-_dot_create_config_template
+_dot_config verify
 
 # Check if file is writable
 if [[ ! -w "$_DOT_CONFIG_FILE" ]]; then
