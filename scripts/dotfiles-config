@@ -352,7 +352,7 @@ _dot_config_validate() {
     if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
         echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} Config file does not exist"
         echo -e "           Using default values for all settings"
-        echo -e "           Run 'dotfiles config edit' to create configuration"
+        echo -e "           Run ${_DOT_BLUE}dotfiles config edit${_DOT_RESET} to create configuration"
         ((warnings++))
         echo
         echo -e "${_DOT_BLUE}Summary:${_DOT_RESET} Configuration is valid (using defaults)"
@@ -362,14 +362,14 @@ _dot_config_validate() {
     # Check file permissions
     if [[ ! -r "$_DOT_CONFIG_FILE" ]]; then
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Config file is not readable"
-        echo -e "         Fix permissions: chmod 644 $_DOT_CONFIG_FILE"
+        echo -e "         Fix permissions: ${_DOT_BLUE}chmod 644 $_DOT_CONFIG_FILE${_DOT_RESET}"
         ((validation_issues++))
         exit_code=1
     fi
 
     if [[ ! -w "$_DOT_CONFIG_FILE" ]]; then
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Config file is not writable"
-        echo -e "         Fix permissions: chmod 644 $_DOT_CONFIG_FILE"
+        echo -e "         Fix permissions: ${_DOT_BLUE}chmod 644 $_DOT_CONFIG_FILE${_DOT_RESET}"
         ((validation_issues++))
         exit_code=1
     fi
@@ -377,8 +377,8 @@ _dot_config_validate() {
     # Use existing corruption detection
     if ! _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
         echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Config file is corrupted"
-        echo -e "         Run 'dotfiles config reset' to restore defaults"
-        echo -e "         Or run 'dotfiles update' to attempt automatic repair"
+        echo -e "         Run ${_DOT_BLUE}dotfiles config reset${_DOT_RESET} to restore defaults"
+        echo -e "         Or run ${_DOT_BLUE}dotfiles update${_DOT_RESET} to attempt automatic repair"
         ((validation_issues++))
         exit_code=1
     else
@@ -399,7 +399,7 @@ _dot_config_validate() {
 
         # Check for malformed lines
         if [[ "$line" =~ [a-zA-Z] ]] && [[ "$line" != *"="* ]]; then
-            echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Line $line_number: Malformed config line (missing '=')"
+            echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Line ${_DOT_BLUE}$line_number${_DOT_RESET}: Malformed config line (missing '=')"
             echo -e "         '$line'"
             ((validation_issues++))
             exit_code=1
@@ -426,14 +426,14 @@ _dot_config_validate() {
                 if _dot_validate_config_value "$key" "$value"; then
                     echo -e "  ${_DOT_GREEN}✓${_DOT_RESET} $key: '$value' is valid"
                 else
-                    echo -e "  ${_DOT_RED}Error:${_DOT_RESET} $key: '$value' is invalid"
-                    echo -e "         Expected pattern: $(_dot_get_validator "$key")"
-                    echo -e "         Default value: $(_dot_get_default "$key")"
+                    echo -e "  ${_DOT_RED}Error:${_DOT_RESET} $key: ${_DOT_BLUE}$value${_DOT_RESET} is invalid"
+                    echo -e "         Expected pattern: ${_DOT_BLUE}$(_dot_get_validator "$key")${_DOT_RESET}"
+                    echo -e "         Default value: ${_DOT_BLUE}$(_dot_get_default "$key")${_DOT_RESET}"
                     ((validation_issues++))
                     exit_code=1
                 fi
             else
-                echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} Unknown config key: '$key'"
+                echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} Unknown config key: ${_DOT_BLUE}$key${_DOT_RESET}"
                 echo -e "           This setting will be ignored"
                 ((warnings++))
             fi
@@ -449,8 +449,8 @@ _dot_config_validate() {
     [[ $found_auto_update_dotfiles -eq 0 ]] && missing_keys+=("auto_update_dotfiles")
 
     for missing_key in "${missing_keys[@]}"; do
-        echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} Missing required key: '$missing_key'"
-        echo -e "           Using default value: $(_dot_get_default "$missing_key")"
+        echo -e "  ${_DOT_YELLOW}Warning:${_DOT_RESET} Missing required key: ${_DOT_BLUE}$missing_key${_DOT_RESET}"
+        echo -e "           Using default value: ${_DOT_BLUE}$(_dot_get_default "$missing_key")${_DOT_RESET}"
         ((warnings++))
     done
 
@@ -461,7 +461,7 @@ _dot_config_validate() {
         if (( warnings > 0 )); then
             echo -e "         and $warnings warning(s)"
         fi
-        echo -e "         Run 'dotfiles config reset' to restore defaults"
+        echo -e "         Run ${_DOT_BLUE}dotfiles config reset${_DOT_RESET} to restore defaults"
     elif (( warnings > 0 )); then
         echo -e "${_DOT_YELLOW}Summary:${_DOT_RESET} Configuration is valid with $warnings warning(s)"
     else
@@ -496,7 +496,7 @@ case "${1:-}" in
         echo -e "  ${_DOT_BLUE}help${_DOT_RESET}       Show this help message"
         ;;
     *)
-        echo -e "${_DOT_RED}Error:${_DOT_RESET} Unknown config command '$1'" >&2
+        echo -e "${_DOT_RED}Error:${_DOT_RESET} Unknown config command ${_DOT_BLUE}$1${_DOT_RESET}" >&2
         echo
         "$0" help
         exit 1

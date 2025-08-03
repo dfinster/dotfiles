@@ -2,7 +2,6 @@
 #
 # dotfiles check - check for new versions
 #
-
 # Source shared utilities
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 source "$script_dir/dotfiles-shared"
@@ -29,6 +28,9 @@ if [[ "$check_type" == "startup" ]]; then
     fi
 fi
 
+# Inform user the check is beginning
+echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Checking for dotfile updates."
+
 if [[ "$_DOT_TARGET_BRANCH" != "$_DOT_CURRENT_BRANCH" ]]; then
     echo
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} dotfiles configuration mismatch detected."
@@ -36,13 +38,6 @@ if [[ "$_DOT_TARGET_BRANCH" != "$_DOT_CURRENT_BRANCH" ]]; then
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} dotfiles config is set to the ${_DOT_BLUE}'$_DOT_TARGET_BRANCH'${_DOT_RESET} branch."
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Please use ${_DOT_BLUE}'dotfiles branch <branchname>'${_DOT_RESET} to choose a branch."
     exit 1  # Mismatch detected, stop processing
-fi
-
-# Display info for startup (automatic checks)
-if [[ "$check_type" == "startup" ]]; then
-    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Run ${_DOT_BLUE}dotfiles help${_DOT_RESET} for options."
-    echo
-    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Checking the ${_DOT_BLUE}$_DOT_CURRENT_BRANCH${_DOT_RESET} branch for updates."
 fi
 
 # Check if we can reach GitHub (fail silently without error if offline)
@@ -67,8 +62,9 @@ if [[ "$commits_behind" -eq 0 ]]; then
 else
     # Show what's new and prompt user to run update
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Newer dotfiles are available."
-    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} You are ${_DOT_BLUE}${commits_behind}${_DOT_RESET} commit(s) behind the remote."
+    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} You are ${_DOT_BLUE}${commits_behind}${_DOT_RESET} commit(s) behind the ${_DOT_BLUE}$_DOT_TARGET_BRANCH${_DOT_RESET} branch."
     echo
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} - See changelog at '${_DOT_BLUE}$_DOT_GITHUB_URL/blob/$_DOT_TARGET_BRANCH/CHANGELOG.md${_DOT_RESET}' for details."
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} - Run '${_DOT_BLUE}dotfiles update${_DOT_RESET}' to update."
+    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Run ${_DOT_BLUE}dotfiles help${_DOT_RESET} for options."
 fi

@@ -3,7 +3,6 @@
 # dotfiles - Lightweight dispatcher for dotfiles management
 #
 
-
 # Ensure DOTFILES is set
 if [[ -z "$DOTFILES" ]]; then
     echo -e "\033[91mError:\033[0m DOTFILES environment variable is not set" >&2
