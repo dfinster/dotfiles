@@ -45,3 +45,5 @@ Personal macOS dotfiles configuration for a modern shell environment with enhanc
 - **Cached results**: Only checks once every 12 hours to improve terminal startup time
 
 For more information, see the [documentation](docs/index.md).
+
+Testing update
