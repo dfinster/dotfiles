@@ -28,14 +28,14 @@ if ! _dot_setup; then
 fi
 
 # Check network connectivity
-if ! _dot_git_quiet ls-remote origin; then
+if ! _dot_git_with_timeout_quiet ls-remote origin; then
     echo -e "${_DOT_RED}Error:${_DOT_RESET} Cannot connect to GitHub" >&2
     exit 1
 fi
 
 # Verify branch exists on remote GitHub repository
 echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Checking if branch ${_DOT_BLUE}'$new_branch'${_DOT_RESET} exists on GitHub..."
-if ! _dot_git_quiet ls-remote --exit-code --heads origin "$new_branch"; then
+if ! _dot_git_with_timeout_quiet ls-remote --exit-code --heads origin "$new_branch"; then
     echo -e "${_DOT_RED}Error:${_DOT_RESET} Branch '$new_branch' does not exist on GitHub" >&2
     exit 1
 fi
@@ -88,7 +88,7 @@ if [[ "$_DOT_CURRENT_BRANCH" != "$_DOT_TARGET_BRANCH" ]]; then
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Switching to branch ${_DOT_BLUE}'$_DOT_TARGET_BRANCH'${_DOT_RESET}..."
 
     # Fetch to ensure we have the latest remote refs
-    _dot_git_quiet fetch origin
+    _dot_git_with_timeout_quiet fetch origin
 
     # Try to checkout existing local branch, or create tracking branch if it doesn't exist
     if ! _dot_git_quiet checkout "$_DOT_TARGET_BRANCH"; then

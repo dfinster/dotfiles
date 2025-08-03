@@ -309,6 +309,24 @@ _dot_git_quiet() {
     _dot_git "$@" >/dev/null 2>&1
 }
 
+# Git command wrappers with network timeout support
+_dot_git_with_timeout() {
+    # Apply timeout to network operations (caller ensures this is only used for network ops)
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "${_DOT_NETWORK_TIMEOUT}s" git -C "$DOTFILES" "$@"
+    elif command -v gtimeout >/dev/null 2>&1; then
+        # macOS with GNU coreutils
+        gtimeout "${_DOT_NETWORK_TIMEOUT}s" git -C "$DOTFILES" "$@"
+    else
+        # Fallback without timeout on systems that don't have it
+        _dot_git "$@"
+    fi
+}
+
+_dot_git_with_timeout_quiet() {
+    _dot_git_with_timeout "$@" >/dev/null 2>&1
+}
+
 # Get file modification time (cross-platform)
 _dot_get_file_mtime() {
     local file="$1"

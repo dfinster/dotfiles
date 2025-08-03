@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 #
 # dotfiles check - check for new versions
 #
@@ -46,12 +46,12 @@ if [[ "$check_type" == "startup" ]]; then
 fi
 
 # Check if we can reach GitHub (fail silently without error if offline)
-if ! _dot_git_quiet ls-remote origin; then
+if ! _dot_git_with_timeout_quiet ls-remote origin; then
     exit 0
 fi
 
 # Fetch latest remote information
-_dot_git_quiet fetch origin "$_DOT_TARGET_BRANCH"
+_dot_git_with_timeout_quiet fetch origin "$_DOT_TARGET_BRANCH"
 
 # Update cache file to record successful check
 touch "$_DOT_CACHE_FILE"

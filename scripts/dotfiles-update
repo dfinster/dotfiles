@@ -36,7 +36,7 @@ if ! _dot_git_quiet diff-index --quiet HEAD --; then
 fi
 
 # Perform git pull and update plugins
-if ! _dot_git_quiet pull origin "$_DOT_TARGET_BRANCH"; then
+if ! _dot_git_with_timeout_quiet pull origin "$_DOT_TARGET_BRANCH"; then
     echo -e "${_DOT_RED}Error:${_DOT_RESET} Update failed" >&2
     exit 1
 fi
