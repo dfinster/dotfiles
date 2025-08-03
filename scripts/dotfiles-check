@@ -5,7 +5,7 @@
 
 # Source shared utilities
 script_dir="$(cd "$(dirname "$0")" && pwd)"
-source "$script_dir/dotfiles-shared.sh"
+source "$script_dir/dotfiles-shared"
 
 check_type="$1"
 # Always run setup first for config loading and corruption detection

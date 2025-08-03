@@ -5,7 +5,7 @@
 
 # Source shared utilities
 script_dir="$(cd "$(dirname "$0")" && pwd)"
-source "$script_dir/dotfiles-shared.sh"
+source "$script_dir/dotfiles-shared"
 
 echo
 echo -e "${_DOT_BLUE}Checking Dotfiles Environment:${_DOT_RESET}"

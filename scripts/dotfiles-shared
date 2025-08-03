@@ -1,6 +1,6 @@
 #!/bin/zsh
 #
-# dotfiles-shared.sh - Shared utilities for dotfiles scripts
+# dotfiles-shared - Shared utilities for dotfiles scripts
 #
 
 # Configuration file path

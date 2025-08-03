@@ -19,32 +19,32 @@ fi
 # Main command dispatcher
 case "$1" in
     update)
-        "$DOTFILES/scripts/dotfiles-update.sh" "$@"
+        "$DOTFILES/scripts/dotfiles-update" "$@"
         ;;
     # silent check at shell startup
     startup)
-        "$DOTFILES/scripts/dotfiles-check.sh" "startup"
+        "$DOTFILES/scripts/dotfiles-check" "startup"
         ;;
     # manual check for updates
     check)
-        "$DOTFILES/scripts/dotfiles-check.sh"
+        "$DOTFILES/scripts/dotfiles-check"
         ;;
     branch)
-        "$DOTFILES/scripts/dotfiles-branch.sh" "$2"
+        "$DOTFILES/scripts/dotfiles-branch" "$2"
         ;;
     config)
-        "$DOTFILES/scripts/dotfiles-config.sh" "${@:2}"
+        "$DOTFILES/scripts/dotfiles-config" "${@:2}"
         ;;
     doctor)
-        "$DOTFILES/scripts/dotfiles-doctor.sh" "${@:2}"
+        "$DOTFILES/scripts/dotfiles-doctor" "${@:2}"
         ;;
     help|--help|-h|"")
-        "$DOTFILES/scripts/dotfiles-help.sh" "${@:2}"
+        "$DOTFILES/scripts/dotfiles-help" "${@:2}"
         ;;
     *)
         echo -e "\033[91mError:\033[0m Unknown command '$1'" >&2
         echo
-        "$DOTFILES/scripts/dotfiles-help.sh"
+        "$DOTFILES/scripts/dotfiles-help"
         return 1
         ;;
 esac

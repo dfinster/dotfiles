@@ -5,7 +5,7 @@
 
 # Source shared utilities
 script_dir="$(cd "$(dirname "$0")" && pwd)"
-source "$script_dir/dotfiles-shared.sh"
+source "$script_dir/dotfiles-shared"
 
 # Config display function
 _dot_config_show() {
@@ -168,7 +168,7 @@ _dot_config_edit() {
         # Test loading the new configuration
         local temp_test=$(mktemp)
         (
-            source "$DOTFILES/scripts/dotfiles-shared.sh"
+            source "$DOTFILES/scripts/dotfiles-shared"
             _dot_load_config > "$temp_test" 2>&1
         )
 

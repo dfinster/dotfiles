@@ -5,7 +5,7 @@
 
 # Source shared utilities
 script_dir="$(cd "$(dirname "$0")" && pwd)"
-source "$script_dir/dotfiles-shared.sh"
+source "$script_dir/dotfiles-shared"
 
 # Check if branch supplied
 if [[ -z "$1" ]]; then
@@ -53,7 +53,7 @@ if [[ ! -w "$_DOT_CONFIG_FILE" ]]; then
 fi
 
 # Atomic config update using temporary file
-temp_file="${_DOT_CONFIG_FILE}.tmp.$$"
+temp_file=$(mktemp)
 updated=false
 # Create new config with updated value
 if [[ -f "$_DOT_CONFIG_FILE" ]]; then
