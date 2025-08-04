@@ -38,7 +38,7 @@ fi
 echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Updating default branch to ${_DOT_BLUE}'$new_branch'${_DOT_RESET} in config file..."
 
 # Ensure config is valid
-_dot_config verify
+_dot_load_config
 
 # Create new config with updated value
 # Atomic config update using temporary file

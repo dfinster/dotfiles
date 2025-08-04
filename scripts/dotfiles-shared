@@ -18,6 +18,13 @@ readonly _DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE="true"
 readonly _DOT_DEFAULT_AUTO_UPDATE_DOTFILES="true"
 readonly _DOT_GITHUB_URL="https://github.com/dfinster/dotfiles"
 
+# Color constants
+readonly _DOT_RED='\033[91m'
+readonly _DOT_YELLOW='\033[93m'
+readonly _DOT_GREEN='\033[92m'
+readonly _DOT_BLUE='\033[94m'
+readonly _DOT_RESET='\033[0m'
+
 # Initialize with defaults
 _DOT_SELECTED_BRANCH="$_DOT_DEFAULT_SELECTED_BRANCH"
 _DOT_CACHE_DURATION="$_DOT_DEFAULT_CACHE_DURATION"
@@ -48,13 +55,6 @@ _dot_get_validator() {
         *) echo "" ;;
     esac
 }
-
-# Color constants
-readonly _DOT_RED='\033[91m'
-readonly _DOT_YELLOW='\033[93m'
-readonly _DOT_GREEN='\033[92m'
-readonly _DOT_BLUE='\033[94m'
-readonly _DOT_RESET='\033[0m'
 
 # Shared validation helper functions
 _dot_trim_whitespace() {
@@ -107,78 +107,11 @@ _dot_validate_config_value() {
     return 0
 }
 
-# Verify or reset config template
-_dot_config() {
-
-    # Ensure parent directory exists
-    local config_dir="$(dirname "$_DOT_CONFIG_FILE")"
-    local mode="$1"
-
-    if "$mode" == "verify"; then
-        if [[ -f "$_DOT_CONFIG_FILE" ]]; then
-            # Config file already exists
-            # Check for corruption
-            if _dot_is_config_corrupted "$_DOT_CONFIG_FILE"; then
-                # Show warning once per shell session during interactive startup
-                if [[ -z "$_DOT_CONFIG_WARNED" ]]; then
-                    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted, please run ${_DOT_GREEN}dotfiles edit${_DOT_RESET}" >&2
-                    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} or ${_DOT_GREEN}dotfiles reset${_DOT_RESET}" >&2
-                    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Using default configuration." >&2
-                    export _DOT_CONFIG_WARNED=1
-                fi
-                exit 1 # Corrupted, exit with error
-            fi
-            return 0 # Exists, not corrupted, no action needed
-        else
-            echo -e "  ${_DOT_YELLOW}Info:${_DOT_RESET} Config file does not exist, creating default."
-        fi
-    elif "$mode" == "reset"; then
-        # Reset config file to default
-        local timestamp=$(date +%Y%m%d%H%M%S)
-        echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Resetting configuration to default."
-    else
-        echo -e "${_DOT_RED}Error:${_DOT_RESET} Invalid mode: $mode" >&2
-        exit 1 # Exit with error
-    fi
-
-    # Create temporary file for atomic replacement
-    local temp_file="${_DOT_CONFIG_FILE}.tmp_${timestamp}"
-
-    # Generate config file content
-    echo "# Dotfiles Configuration" > "$temp_file"
-    echo "# This file is not tracked in git and contains user-specific settings" >> "$temp_file"
-    echo "# You can edit this file to customize your dotfiles settings" >> $temp_file
-    echo >> "$temp_file"
-    echo "auto_update_dotfiles=$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES" >> "$temp_file"
-    echo "auto_update_antidote=$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE" >> "$temp_file"
-    echo "selected_branch=$_DOT_DEFAULT_SELECTED_BRANCH" >> "$temp_file"
-    echo "cache_duration=$_DOT_DEFAULT_CACHE_DURATION"  >> "$temp_file"
-    echo "network_timeout=$_DOT_DEFAULT_NETWORK_TIMEOUT" >> "$temp_file"
-
-    # Verify temp file was created correctly
-    if [[ ! -f "$temp_file" ]] || [[ ! -s "$temp_file" ]]; then
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to create temporary config file." >&2
-        rm -f "$temp_file"
-        exit 1 # Exit with error
-    fi
-
-    # Atomic replacement
-    if ! mv "$temp_file" "$_DOT_CONFIG_FILE"; then
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to replace config file." >&2
-        rm -f "$temp_file"
-        exit 1 # Exit with error
-    fi
-
-    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} New config created."
-    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Edit ${_DOT_BLUE}$_DOT_CONFIG_FILE${_DOT_RESET} to customize your settings."
-}
-
 # Check if config file is corrupted
-_dot_is_config_corrupted() {
-    local config_file="$1"
+_dot_is_config_valid() {
 
-    # File doesn't exist - not corrupted, just missing
-    [[ ! -f "$config_file" ]] && return 0
+    # File doesn't exist, consider it corrupted
+    [[ ! -f "$_DOT_CONFIG_FILE" ]] && return 1
 
     # Check if file is writable
     if [[ ! -w "$_DOT_CONFIG_FILE" ]]; then
@@ -187,7 +120,7 @@ _dot_is_config_corrupted() {
     fi
 
     # Check for empty file or only whitespace
-    if [[ ! -s "$config_file" ]] || ! grep -q '[^[:space:]]' "$config_file" 2>/dev/null; then
+    if [[ ! -s "$_DOT_CONFIG_FILE" ]] || ! grep -q '[^[:space:]]' "$_DOT_CONFIG_FILE" 2>/dev/null; then
         return 1  # corrupted
     fi
 
@@ -228,7 +161,7 @@ _dot_is_config_corrupted() {
                 ((parse_errors++))
             fi
         fi
-    done < "$config_file"
+    done < "$_DOT_CONFIG_FILE"
 
     # Check for corruption conditions
     (( valid_lines == 0 )) && return 1  # no valid config lines
@@ -241,21 +174,18 @@ _dot_is_config_corrupted() {
     [[ $found_auto_update_antidote -eq 0 ]] && return 1
     [[ $found_auto_update_dotfiles -eq 0 ]] && return 1
 
-    return 0  # not corrupted
+    return 0  # is valid
 }
 
 # Load configuration from file and environment variables
 _dot_load_config() {
-    # Skip if already loaded recently (within same shell session)
-    if [[ -n "$_DOT_CONFIG_LOADED" ]]; then
-        return 0
-    fi
-
-    # Check config
-    _dot_config verify
-
     # Load from config file if it exists
     if [[ -f "$_DOT_CONFIG_FILE" ]]; then
+        if ! _dot_is_config_valid; then
+            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted. Run ${_DOT_GREEN}dotfiles edit${_DOT_RESET} or ${_DOT_GREEN}dotfiles reset${_DOT_RESET}." >&2
+            echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Using default configuration." >&2
+            exit 1 # Corrupted, exit with error
+        fi
         while IFS= read -r line || [[ -n "$line" ]]; do
             # Skip comments and empty lines
             [[ "$line" =~ ^[[:space:]]*# ]] && continue
@@ -286,9 +216,6 @@ _dot_load_config() {
             esac
         done < "$_DOT_CONFIG_FILE"
     fi
-
-    # Mark as loaded for this session
-    export _DOT_CONFIG_LOADED=1
 }
 
 # Git command wrappers to eliminate repetition
