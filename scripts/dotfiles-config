@@ -10,7 +10,10 @@ source "$script_dir/dotfiles-shared"
 # Config display function
 _dot_config_show() {
     # Load current configuration
-    _dot_load_config
+    if ! _dot_load_config; then
+        echo -e "${_DOT_RED}Error:${_DOT_RESET} Failed to load configuration. Run ${_DOT_BLUE}dotfiles edit${_DOT_RESET} or {_DOT_BLUE}dotfiles reset${_DOT_RESET} to fix the error." >&2
+        return 1
+    fi
 
     echo -e "${_DOT_BLUE}Current Configuration:${_DOT_RESET}"
     echo
@@ -51,7 +54,10 @@ _dot_config_edit() {
     echo -e "${_DOT_BLUE}Editing${_DOT_RESET} $_DOT_CONFIG_FILE"
 
     # Ensure config file exists
-    _dot_load_config
+    if ! _dot_load_config; then
+        echo -e "${_DOT_RED}Error:${_DOT_RESET} Failed to load configuration. Run ${_DOT_BLUE}dotfiles edit${_DOT_RESET} or {_DOT_BLUE}dotfiles reset${_DOT_RESET} to fix the error." >&2
+        return 1
+    fi
 
     # Launch editor and wait for completion
     ${EDITOR:-code} "$_DOT_CONFIG_FILE"

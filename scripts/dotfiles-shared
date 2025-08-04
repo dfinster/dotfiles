@@ -184,7 +184,7 @@ _dot_load_config() {
         if ! _dot_is_config_valid; then
             echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted. Run ${_DOT_GREEN}dotfiles edit${_DOT_RESET} or ${_DOT_GREEN}dotfiles reset${_DOT_RESET}." >&2
             echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Using default configuration." >&2
-            exit 1 # Corrupted, exit with error
+            return 1 # Corrupted, return error code to caller
         fi
         while IFS= read -r line || [[ -n "$line" ]]; do
             # Skip comments and empty lines

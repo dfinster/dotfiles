@@ -38,7 +38,10 @@ fi
 echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Updating default branch to ${_DOT_BLUE}'$new_branch'${_DOT_RESET} in config file..."
 
 # Ensure config is valid
-_dot_load_config
+if ! _dot_load_config; then
+    echo -e "${_DOT_RED}Error:${_DOT_RESET} Failed to load configuration. Run ${_DOT_BLUE}dotfiles edit${_DOT_RESET} or {_DOT_BLUE}dotfiles reset${_DOT_RESET} to fix the error." >&2
+    exit 1
+fi
 
 # Create new config with updated value
 # Atomic config update using temporary file
