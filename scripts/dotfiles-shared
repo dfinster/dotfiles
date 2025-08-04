@@ -107,9 +107,8 @@ _dot_validate_config_value() {
     return 0
 }
 
-# Check if config file is corrupted
-_dot_is_config_valid() {
-
+# Check if config file exists and is accessible
+_dot_check_config_file_access() {
     # File doesn't exist, consider it corrupted
     [[ ! -f "$_DOT_CONFIG_FILE" ]] && return 1
 
@@ -119,17 +118,32 @@ _dot_is_config_valid() {
         return 1  # Not writable, consider it corrupted
     fi
 
+    return 0
+}
+
+# Check if config file has valid content (not empty or whitespace-only)
+_dot_check_config_content() {
     # Check for empty file or only whitespace
     if [[ ! -s "$_DOT_CONFIG_FILE" ]] || ! grep -q '[^[:space:]]' "$_DOT_CONFIG_FILE" 2>/dev/null; then
         return 1  # corrupted
     fi
 
-    # Single pass validation - check all issues at once
-    local valid_lines=0
-    local parse_errors=0
-    # Use simple variables to track found keys instead of associative arrays
-    local found_selected_branch=0 found_cache_duration=0 found_network_timeout=0 found_auto_update_antidote=0 found_auto_update_dotfiles=0
+    return 0
+}
+
+# Process config file lines and track validity statistics
+# Sets global variables: _dot_valid_lines, _dot_parse_errors, _dot_found_* flags
+_dot_process_config_lines() {
     local key value
+
+    # Initialize statistics as global variables
+    _dot_valid_lines=0
+    _dot_parse_errors=0
+    _dot_found_selected_branch=0
+    _dot_found_cache_duration=0
+    _dot_found_network_timeout=0
+    _dot_found_auto_update_antidote=0
+    _dot_found_auto_update_dotfiles=0
 
     while IFS= read -r line || [[ -n "$line" ]]; do
         # Parse line and skip if not a config line
@@ -138,17 +152,17 @@ _dot_is_config_valid() {
             key="${parse_result%%$'\t'*}"
             value="${parse_result#*$'\t'}"
 
-            ((valid_lines++))
+            ((_dot_valid_lines++))
 
             # Validate known keys
             if [[ -n "$(_dot_get_validator "$key")" ]]; then
                 # Mark key as found
                 case "$key" in
-                    selected_branch) found_selected_branch=1 ;;
-                    cache_duration) found_cache_duration=1 ;;
-                    network_timeout) found_network_timeout=1 ;;
-                    auto_update_antidote) found_auto_update_antidote=1 ;;
-                    auto_update_dotfiles) found_auto_update_dotfiles=1 ;;
+                    selected_branch) _dot_found_selected_branch=1 ;;
+                    cache_duration) _dot_found_cache_duration=1 ;;
+                    network_timeout) _dot_found_network_timeout=1 ;;
+                    auto_update_antidote) _dot_found_auto_update_antidote=1 ;;
+                    auto_update_dotfiles) _dot_found_auto_update_dotfiles=1 ;;
                 esac
 
                 if ! _dot_validate_config_value "$key" "$value"; then
@@ -158,21 +172,40 @@ _dot_is_config_valid() {
         else
             # Check for malformed non-comment lines
             if [[ ! "$line" =~ ^[[:space:]]*# ]] && [[ "$line" =~ [a-zA-Z] ]] && [[ "$line" != *"="* ]]; then
-                ((parse_errors++))
+                ((_dot_parse_errors++))
             fi
         fi
     done < "$_DOT_CONFIG_FILE"
 
+    return 0
+}
+
+# Validate config parsing results and required keys
+# Uses global variables set by _dot_process_config_lines
+_dot_validate_config_results() {
     # Check for corruption conditions
-    (( valid_lines == 0 )) && return 1  # no valid config lines
-    (( parse_errors > 0 )) && return 1  # parse errors found
+    (( _dot_valid_lines == 0 )) && return 1  # no valid config lines
+    (( _dot_parse_errors > 0 )) && return 1  # parse errors found
 
     # Check for missing required keys
-    [[ $found_selected_branch -eq 0 ]] && return 1
-    [[ $found_cache_duration -eq 0 ]] && return 1
-    [[ $found_network_timeout -eq 0 ]] && return 1
-    [[ $found_auto_update_antidote -eq 0 ]] && return 1
-    [[ $found_auto_update_dotfiles -eq 0 ]] && return 1
+    [[ $_dot_found_selected_branch -eq 0 ]] && return 1
+    [[ $_dot_found_cache_duration -eq 0 ]] && return 1
+    [[ $_dot_found_network_timeout -eq 0 ]] && return 1
+    [[ $_dot_found_auto_update_antidote -eq 0 ]] && return 1
+    [[ $_dot_found_auto_update_dotfiles -eq 0 ]] && return 1
+
+    return 0
+}
+
+# Check if config file is corrupted
+_dot_is_config_valid() {
+    # Check file access and content
+    _dot_check_config_file_access || return 1
+    _dot_check_config_content || return 1
+
+    # Process config lines and validate results
+    _dot_process_config_lines || return 1
+    _dot_validate_config_results || return 1
 
     return 0  # is valid
 }
