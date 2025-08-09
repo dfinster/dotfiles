@@ -107,34 +107,11 @@ _dot_validate_config_value() {
     return 0
 }
 
-# Check if config file exists and is accessible
-_dot_check_config_file_access() {
-    # File doesn't exist, consider it corrupted
-    [[ ! -f "$_DOT_CONFIG_FILE" ]] && return 1
-
-    # Check if file is writable
-    if [[ ! -w "$_DOT_CONFIG_FILE" ]]; then
-        echo -e "${_DOT_RED}Error:${_DOT_RESET} Cannot write to $_DOT_CONFIG_FILE" >&2
-        return 1  # Not writable, consider it corrupted
-    fi
-
-    return 0
-}
-
-# Check if config file has valid content (not empty or whitespace-only)
-_dot_check_config_content() {
-    # Check for empty file or only whitespace
-    if [[ ! -s "$_DOT_CONFIG_FILE" ]] || ! grep -q '[^[:space:]]' "$_DOT_CONFIG_FILE" 2>/dev/null; then
-        return 1  # corrupted
-    fi
-
-    return 0
-}
 
 # Process config file lines and track validity statistics
 # Sets global variables: _dot_valid_lines, _dot_parse_errors, _dot_found_* flags
 _dot_process_config_lines() {
-    local key value
+    local key value line parse_result
 
     # Initialize statistics as global variables
     _dot_valid_lines=0
@@ -146,9 +123,8 @@ _dot_process_config_lines() {
     _dot_found_auto_update_dotfiles=0
 
     while IFS= read -r line || [[ -n "$line" ]]; do
-        # Parse line and skip if not a config line
-        if _dot_parse_config_line "$line" >/dev/null 2>&1; then
-            local parse_result=$(_dot_parse_config_line "$line" 2>/dev/null)
+        parse_result=$(_dot_parse_config_line "$line" 2>/dev/null)
+        if [[ $? -eq 0 ]]; then
             key="${parse_result%%$'\t'*}"
             value="${parse_result#*$'\t'}"
 
@@ -199,9 +175,8 @@ _dot_validate_config_results() {
 
 # Check if config file is corrupted
 _dot_is_config_valid() {
-    # Check file access and content
-    _dot_check_config_file_access || return 1
-    _dot_check_config_content || return 1
+    # File doesn't exist, consider it corrupted
+    [[ ! -f "$_DOT_CONFIG_FILE" ]] && return 1
 
     # Process config lines and validate results
     _dot_process_config_lines || return 1
@@ -212,6 +187,7 @@ _dot_is_config_valid() {
 
 # Load configuration from file and environment variables
 _dot_load_config() {
+    local key value line
     # Load from config file if it exists
     if [[ -f "$_DOT_CONFIG_FILE" ]]; then
         if ! _dot_is_config_valid; then
