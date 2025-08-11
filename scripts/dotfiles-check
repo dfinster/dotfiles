@@ -29,8 +29,7 @@ if [[ "$check_type" == "startup" ]]; then
 fi
 
 # Inform user the check is beginning
-echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Checking for dotfile updates."
-
+echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Checking GitHub for dotfiles updates."
 if [[ "$_DOT_TARGET_BRANCH" != "$_DOT_CURRENT_BRANCH" ]]; then
     echo
     echo -e "${_DOT_GREEN}Info:${_DOT_RESET} dotfiles configuration mismatch detected."
@@ -41,6 +40,7 @@ if [[ "$_DOT_TARGET_BRANCH" != "$_DOT_CURRENT_BRANCH" ]]; then
 fi
 
 # Check if we can reach GitHub (fail silently without error if offline)
+echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Please unlock SSH key if prompted."
 if ! _dot_git_with_timeout_quiet ls-remote origin; then
     exit 0
 fi
