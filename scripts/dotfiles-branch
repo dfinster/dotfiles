@@ -9,8 +9,7 @@ source "$script_dir/dotfiles-shared"
 
 # Check if branch supplied
 if [[ -z "$1" ]]; then
-    echo -e "${_DOT_RED}Error:${_DOT_RESET} Branch name is required" >&2
-    echo "Usage: dotfiles branch <branchname>"
+    _dot_echo_error "Branch name is required. Use ${_CB}'dotfiles branch <branchname>'${_CN} to set the default branch."
     exit 1
 else
     new_branch="$1"
@@ -18,7 +17,7 @@ fi
 
 # Validate branch name to prevent command injection
 if [[ "$new_branch" =~ [\$\`\;\|\&\<\>\(\)] ]]; then
-    echo -e "${_DOT_RED}Error:${_DOT_RESET} Branch name contains invalid characters" >&2
+    _dot_echo_error "Branch name contains invalid characters"
     exit 1
 fi
 
@@ -28,18 +27,18 @@ if ! _dot_setup; then
 fi
 
 # Verify branch exists on remote GitHub repository
-echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Checking if branch ${_DOT_BLUE}'$new_branch'${_DOT_RESET} exists on GitHub..."
+_dot_echo_info "Checking if branch ${_CB}'$new_branch'${_CN} exists on GitHub..."
 if ! _dot_git_with_timeout_quiet ls-remote --exit-code --heads origin "$new_branch"; then
-    echo -e "${_DOT_RED}Error:${_DOT_RESET} Branch '$new_branch' does not exist on GitHub" >&2
+    _dot_echo_error "Branch ${_CB}'$new_branch'${_CN} does not exist on GitHub"
     exit 1
 fi
 
 # Update default branch in configuration file
-echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Updating default branch to ${_DOT_BLUE}'$new_branch'${_DOT_RESET} in config file..."
+_dot_echo_info "Updating default branch to ${_CB}'$new_branch'${_CN} in config file..."
 
 # Ensure config is valid
 if ! _dot_load_config; then
-    echo -e "${_DOT_RED}Error:${_DOT_RESET} Failed to load configuration. Run ${_DOT_BLUE}dotfiles edit${_DOT_RESET} or {_DOT_BLUE}dotfiles reset${_DOT_RESET} to fix the error." >&2
+    _dot_echo_error "Failed to load configuration. Run ${_CB}dotfiles edit${_CN} or ${_CB}dotfiles reset${_CN} to fix the error."
     exit 1
 fi
 
@@ -61,7 +60,7 @@ done < "$_DOT_CONFIG_FILE" > "$temp_file"
 if ! mv "$temp_file" "$_DOT_CONFIG_FILE"; then
     # Cleanup on failure
     rm -f "$temp_file" 2>/dev/null || true
-    echo -e "${_DOT_RED}Error:${_DOT_RESET} Failed to update config file" >&2
+    echo -e "${}Error:${_CN} Failed to update config file" >&2
     exit 1
 fi
 
@@ -70,7 +69,7 @@ _DOT_SELECTED_BRANCH="$new_branch"
 _DOT_TARGET_BRANCH="$new_branch"
 
 if [[ "$_DOT_CURRENT_BRANCH" != "$_DOT_TARGET_BRANCH" ]]; then
-    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Switching to branch ${_DOT_BLUE}'$_DOT_TARGET_BRANCH'${_DOT_RESET}..."
+    _dot_echo_info "Switching to branch ${_CB}'$_DOT_TARGET_BRANCH'${_CN}..."
 
     # Fetch to ensure we have the latest remote refs
     _dot_git_with_timeout_quiet fetch origin
@@ -79,7 +78,7 @@ if [[ "$_DOT_CURRENT_BRANCH" != "$_DOT_TARGET_BRANCH" ]]; then
     if ! _dot_git_quiet checkout "$_DOT_TARGET_BRANCH"; then
         # If checkout failed, try to create a new tracking branch
         if ! _dot_git_quiet checkout -b "$_DOT_TARGET_BRANCH" "origin/$_DOT_TARGET_BRANCH"; then
-            echo -e "${_DOT_RED}Error:${_DOT_RESET} Failed to switch to branch ${_DOT_BLUE}'$_DOT_TARGET_BRANCH'${_DOT_RESET}." >&2
+            _dot_echo_error "Failed to switch to branch ${_CB}'$_DOT_TARGET_BRANCH'${_CN}."
             exit 1
         fi
     fi
@@ -88,10 +87,10 @@ if [[ "$_DOT_CURRENT_BRANCH" != "$_DOT_TARGET_BRANCH" ]]; then
     if [[ "$new_current" == "$_DOT_TARGET_BRANCH" ]]; then
         _DOT_CURRENT_BRANCH="$_DOT_TARGET_BRANCH"
     else
-        echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Branch switch may have failed (expected '$_DOT_TARGET_BRANCH', got '$new_current')" >&2
+        _dot_echo_warning "Branch switch may have failed (expected '$_DOT_TARGET_BRANCH', got '$new_current')"
         exit 1
     fi
 fi
 
-echo -e "${_DOT_GREEN}Info:${_DOT_RESET} On branch ${_DOT_BLUE}'$_DOT_CURRENT_BRANCH'${_DOT_RESET}."
-echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Restart your terminal to apply changes."
+_dot_echo_info "On branch ${_CB}'$_DOT_CURRENT_BRANCH'${_CN}."
+_dot_echo_info "Restart your terminal to apply changes."

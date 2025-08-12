@@ -11,18 +11,18 @@ source "$script_dir/dotfiles-shared"
 _dot_config_show() {
     # Load current configuration
     if ! _dot_load_config; then
-        echo -e "${_DOT_RED}Error:${_DOT_RESET} Failed to load configuration. Run ${_DOT_BLUE}dotfiles edit${_DOT_RESET} or {_DOT_BLUE}dotfiles reset${_DOT_RESET} to fix the error." >&2
+        _dot_echo_error "Failed to load configuration. Run ${_CB}dotfiles edit${_CN} or ${_CB}dotfiles reset${_CN} to fix the error."
         return 1
     fi
 
-    echo -e "${_DOT_BLUE}Current Configuration:${_DOT_RESET}"
+    echo -e "${_CB}Current Configuration:${_CN}"
     echo
 
     # Display config file location
-    echo -e "  ${_DOT_BLUE}Config file:${_DOT_RESET} $_DOT_CONFIG_FILE"
+    echo -e "  ${_CB}Config file:${_CN} $_DOT_CONFIG_FILE"
 
     echo
-    echo -e "${_DOT_BLUE}Settings:${_DOT_RESET}"
+    echo -e "${_CB}Settings:${_CN}"
 
     # Use simple variables instead of associative arrays for compatibility
     local file_selected_branch="" file_cache_duration="" file_network_timeout="" file_auto_update_antidote="" file_auto_update_dotfiles=""
@@ -32,7 +32,7 @@ _dot_config_show() {
     local current_values=("$_DOT_SELECTED_BRANCH" "$_DOT_CACHE_DURATION" "$_DOT_NETWORK_TIMEOUT" "$_DOT_AUTO_UPDATE_ANTIDOTE" "$_DOT_AUTO_UPDATE_DOTFILES")
 
     # Print table header
-    echo -e "  ${_DOT_BLUE}$(printf "%-22s %-15s %s" "Setting" "Current Value" "Default Value")${_DOT_RESET}"
+    echo -e "  ${_CB}$(printf "%-22s %-15s %s" "Setting" "Current Value" "Default Value")${_CN}"
     echo -e "  $(printf "%-22s %-15s %s" "-------" "-------------" "-------------")"
 
     for i in {1..5}; do
@@ -44,18 +44,18 @@ _dot_config_show() {
     done
 
     echo
-    echo -e "${_DOT_BLUE}Commands:${_DOT_RESET}"
-    echo -e "  ${_DOT_BLUE}dotfiles config edit${_DOT_RESET}      Edit configuration in \$EDITOR"
-    echo -e "  ${_DOT_BLUE}dotfiles config reset${_DOT_RESET}     Reset to default values"
+    echo -e "${_CB}Commands:${_CN}"
+    echo -e "  ${_CB}dotfiles config edit${_CN}      Edit configuration in \$EDITOR"
+    echo -e "  ${_CB}dotfiles config reset${_CN}     Reset to default values"
 }
 
 # Config editing function with validation
 _dot_config_edit() {
-    echo -e "${_DOT_BLUE}Editing${_DOT_RESET} $_DOT_CONFIG_FILE"
+    echo -e "${_CB}Editing${_CN} $_DOT_CONFIG_FILE"
 
     # Ensure config file exists
     if ! _dot_load_config; then
-        echo -e "${_DOT_RED}Error:${_DOT_RESET} Failed to load configuration. Run ${_DOT_BLUE}dotfiles edit${_DOT_RESET} or {_DOT_BLUE}dotfiles reset${_DOT_RESET} to fix the error." >&2
+        _dot_echo_error "Failed to load configuration. Run ${_CB}dotfiles edit${_CN} or ${_CB}dotfiles reset${_CN} to fix the error."
         return 1
     fi
 
@@ -65,18 +65,18 @@ _dot_config_edit() {
 
 # Config reset function with backup
 _dot_config_reset() {
-    echo -e "${_DOT_BLUE}Configuration Reset:${_DOT_RESET}"
+    echo -e "${_CB}Configuration Reset:${_CN}"
     echo
 
     # Confirmation prompt
-    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} This will reset configuration to default."
+    _dot_echo_warning "This will reset configuration to default."
     echo
     echo -n "Continue with reset? [y/N]: "
     read -r REPLY
     echo
 
     if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
-        echo -e "  ${_DOT_BLUE}Info:${_DOT_RESET} Configuration was not reset."
+        echo -e "  ${_CB}Info:${_CN} Configuration was not reset."
         return 0
     fi
 
@@ -84,7 +84,7 @@ _dot_config_reset() {
     # Ensure parent directory exists
     local config_dir="$(dirname "$_DOT_CONFIG_FILE")"
     local timestamp=$(date +%Y%m%d%H%M%S)
-    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Resetting configuration to default."
+    _dot_echo_info "Resetting configuration to default."
 
     # Create temporary file for atomic replacement
     local temp_file="${_DOT_CONFIG_FILE}.tmp_${timestamp}"
@@ -102,20 +102,20 @@ _dot_config_reset() {
 
     # Verify temp file was created correctly
     if [[ ! -f "$temp_file" ]] || [[ ! -s "$temp_file" ]]; then
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to create temporary config file." >&2
+        _dot_echo_error "Failed to create temporary config file."
         rm -f "$temp_file"
         exit 1 # Exit with error
     fi
 
     # Atomic replacement
     if ! mv "$temp_file" "$_DOT_CONFIG_FILE"; then
-        echo -e "  ${_DOT_RED}Error:${_DOT_RESET} Failed to replace config file." >&2
+        _dot_echo_error "Failed to replace config file."
         rm -f "$temp_file"
         exit 1 # Exit with error
     fi
 
-    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} New config created."
-    echo -e "${_DOT_GREEN}Info:${_DOT_RESET} Edit ${_DOT_BLUE}$_DOT_CONFIG_FILE${_DOT_RESET} to customize your settings."
+    _dot_echo_info "New config created."
+    _dot_echo_info "Edit ${_CB}$_DOT_CONFIG_FILE${_CN} to customize your settings."
 
     return 0
 }

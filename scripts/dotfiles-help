@@ -7,17 +7,19 @@
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 source "$script_dir/dotfiles-shared"
 
-echo -e "${_DOT_YELLOW}Dotfiles Management System${_DOT_RESET}"
+echo -e "Dotfiles Management System"
 echo
-echo -e "${_DOT_YELLOW}Commands:${_DOT_RESET}"
-echo -e "  ${_DOT_BLUE}dotfiles update${_DOT_RESET}          Update from remote repository"
-echo -e "  ${_DOT_BLUE}dotfiles check${_DOT_RESET}           Check for updates without applying"
-echo -e "  ${_DOT_BLUE}dotfiles branch <name>${_DOT_RESET}   Switch to a different branch"
-echo -e "  ${_DOT_BLUE}dotfiles show${_DOT_RESET}            Display current config"
-echo -e "  ${_DOT_BLUE}dotfiles edit${_DOT_RESET}            Edit config file"
-echo -e "  ${_DOT_BLUE}dotfiles reset${_DOT_RESET}           Reset config to default"
+echo -e "Commands:"
 echo
-echo -e "${_DOT_YELLOW}Configuration:${_DOT_RESET}"
-echo -e "  Config file: ${_DOT_BLUE}$_DOT_CONFIG_FILE${_DOT_RESET}"
-echo -e "  Dotfiles dir: ${_DOT_BLUE}${DOTFILES:-<not set>}${_DOT_RESET}"
+echo -e "  ${_CB}dotfiles update${_CN}          Update from remote repository"
+echo -e "  ${_CB}dotfiles check${_CN}           Check for updates without applying"
+echo -e "  ${_CB}dotfiles branch <name>${_CN}   Switch to a different branch"
+echo -e "  ${_CB}dotfiles show${_CN}            Display current config"
+echo -e "  ${_CB}dotfiles edit${_CN}            Edit config file"
+echo -e "  ${_CB}dotfiles reset${_CN}           Reset config to default"
+echo
+echo -e "Configuration:"
+echo
+echo -e "  Config file:  ${_CB}$_DOT_CONFIG_FILE${_CN}"
+echo -e "  Dotfiles dir: ${_CB}${DOTFILES:-<not set>}${_CN}"
 echo

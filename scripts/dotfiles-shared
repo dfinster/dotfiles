@@ -19,11 +19,21 @@ readonly _DOT_DEFAULT_AUTO_UPDATE_DOTFILES="true"
 readonly _DOT_GITHUB_URL="https://github.com/dfinster/dotfiles"
 
 # Color constants
-readonly _DOT_RED='\033[91m'
-readonly _DOT_YELLOW='\033[93m'
-readonly _DOT_GREEN='\033[92m'
-readonly _DOT_BLUE='\033[94m'
-readonly _DOT_RESET='\033[0m'
+readonly _CR='\033[91m' # Color Red
+readonly _CG='\033[92m' # Color Green
+readonly _CB='\033[94m' # Color Blue
+readonly _CY='\033[93m' # Color Yellow
+readonly _CN='\033[0m' # Color Normal
+
+_dot_echo_error() {
+    echo -e "${_CR}Error:${_CN} $1" >&2
+}
+_dot_echo_info() {
+    echo -e "${_CG}Info:${_CN} $1" >&2
+}
+_dot_echo_warning() {
+    echo -e "${_CY}Warning:${_CN} $1" >&2
+}
 
 # Initialize with defaults
 _DOT_SELECTED_BRANCH="$_DOT_DEFAULT_SELECTED_BRANCH"
@@ -175,13 +185,13 @@ _dot_validate_config_results() {
 
 # Display config corruption warning message
 _dot_report_config_corruption() {
-    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Config file appears corrupted. Run ${_DOT_GREEN}dotfiles edit${_DOT_RESET} or ${_DOT_GREEN}dotfiles reset${_DOT_RESET}." >&2
-    echo -e "${_DOT_YELLOW}Warning:${_DOT_RESET} Using default configuration." >&2
+    _dot_echo_warning "Config file appears corrupted. Run ${_CB}dotfiles edit${_CN} or ${_CB}dotfiles reset${_CN}."
+    _dot_echo_warning "Using default configuration."
 }
 
 # Display missing config file message
 _dot_report_config_missing() {
-    echo -e "${_DOT_YELLOW}Info:${_DOT_RESET} Config file not found. Using default configuration." >&2
+    _dot_echo_warning "Config file not found. Using default configuration."
 }
 
 # Set config variable based on key
