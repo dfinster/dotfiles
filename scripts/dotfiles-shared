@@ -1,0 +1,356 @@
+#!/bin/zsh
+#
+# dotfiles-shared - Shared utilities for dotfiles scripts
+
+# Configuration file path
+readonly _DOT_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/dotfiles.conf"
+
+# Cache file paths
+readonly _DOT_CACHE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/.last-check"
+readonly _DOT_CACHE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/.cache"
+
+# Configuration defaults - single source of truth
+readonly _DOT_DEFAULT_SELECTED_BRANCH="main"
+readonly _DOT_DEFAULT_CACHE_DURATION="172800"  # 2 days in seconds
+readonly _DOT_DEFAULT_NETWORK_TIMEOUT="30"
+readonly _DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE="true"
+readonly _DOT_DEFAULT_AUTO_UPDATE_DOTFILES="true"
+readonly _DOT_GITHUB_URL="https://github.com/dfinster/dotfiles"
+
+# Color constants
+readonly _CR='\033[91m' # Color Red
+readonly _CG='\033[92m' # Color Green
+readonly _CB='\033[94m' # Color Blue
+readonly _CY='\033[93m' # Color Yellow
+readonly _CN='\033[0m' # Color Normal
+
+_dot_echo_error() {
+    echo -e "${_CR}Error:${_CN} $1" >&2
+}
+_dot_echo_info() {
+    echo -e "${_CG}Info:${_CN} $1" >&2
+}
+_dot_echo_warning() {
+    echo -e "${_CY}Warning:${_CN} $1" >&2
+}
+
+# Initialize with defaults
+_DOT_SELECTED_BRANCH="$_DOT_DEFAULT_SELECTED_BRANCH"
+_DOT_CACHE_DURATION="$_DOT_DEFAULT_CACHE_DURATION"
+_DOT_NETWORK_TIMEOUT="$_DOT_DEFAULT_NETWORK_TIMEOUT"
+_DOT_AUTO_UPDATE_ANTIDOTE="$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE"
+_DOT_AUTO_UPDATE_DOTFILES="$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES"
+
+# Get default value for a config key
+_dot_get_default() {
+    case "$1" in
+        selected_branch) echo "$_DOT_DEFAULT_SELECTED_BRANCH" ;;
+        cache_duration) echo "$_DOT_DEFAULT_CACHE_DURATION" ;;
+        network_timeout) echo "$_DOT_DEFAULT_NETWORK_TIMEOUT" ;;
+        auto_update_antidote) echo "$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE" ;;
+        auto_update_dotfiles) echo "$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES" ;;
+        *) echo "" ;;
+    esac
+}
+
+# Get validator pattern for a config key
+_dot_get_validator() {
+    case "$1" in
+        selected_branch) echo '^[a-zA-Z0-9._/-]+$' ;;
+        cache_duration) echo '^[0-9]+$' ;;
+        network_timeout) echo '^[0-9]+$' ;;
+        auto_update_antidote) echo '^(true|false)$' ;;
+        auto_update_dotfiles) echo '^(true|false)$' ;;
+        *) echo "" ;;
+    esac
+}
+
+# Shared validation helper functions
+_dot_trim_whitespace() {
+    local value="$1"
+    value="${value#"${value%%[![:space:]]*}"}"  # trim leading
+    value="${value%"${value##*[![:space:]]}"}"  # trim trailing
+    echo "$value"
+}
+
+_dot_parse_config_line() {
+    local line="$1"
+
+    # Skip comments and empty lines
+    [[ "$line" =~ ^[[:space:]]*# ]] && return 1
+    [[ -z "$line" ]] && return 1
+    [[ "$line" != *"="* ]] && return 1
+
+    # Extract and trim key/value - output to stdout
+    local key="$(_dot_trim_whitespace "${line%%=*}")"
+    local value="$(_dot_trim_whitespace "${line#*=}")"
+
+    [[ -n "$key" ]] || return 1
+
+    # Output key and value separated by tab
+    echo -e "$key\t$value"
+    return 0
+}
+
+_dot_validate_config_value() {
+    local key="$1"
+    local value="$2"
+
+    # Get validator pattern
+    local pattern="$(_dot_get_validator "$key")"
+    [[ -n "$pattern" ]] || return 1
+
+    # Validate using the pattern
+    [[ "$value" =~ $pattern ]] || return 1
+
+    # Additional range checks for numeric values
+    case "$key" in
+        cache_duration)
+            (( value > 0 && value < 86400000 )) || return 1
+            ;;
+        network_timeout)
+            (( value >= 1 && value <= 300 )) || return 1
+            ;;
+    esac
+
+    return 0
+}
+
+
+# Process config file lines and track validity statistics
+# Sets global variables: _dot_valid_lines, _dot_parse_errors, _dot_found_* flags
+_dot_process_config_lines() {
+    local key value line parse_result
+
+    # Initialize statistics as global variables
+    _dot_valid_lines=0
+    _dot_parse_errors=0
+    _dot_found_selected_branch=0
+    _dot_found_cache_duration=0
+    _dot_found_network_timeout=0
+    _dot_found_auto_update_antidote=0
+    _dot_found_auto_update_dotfiles=0
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        parse_result=$(_dot_parse_config_line "$line" 2>/dev/null)
+        if [[ $? -eq 0 ]]; then
+            key="${parse_result%%$'\t'*}"
+            value="${parse_result#*$'\t'}"
+
+            ((_dot_valid_lines++))
+
+            # Validate known keys
+            if [[ -n "$(_dot_get_validator "$key")" ]]; then
+                # Mark key as found
+                case "$key" in
+                    selected_branch) _dot_found_selected_branch=1 ;;
+                    cache_duration) _dot_found_cache_duration=1 ;;
+                    network_timeout) _dot_found_network_timeout=1 ;;
+                    auto_update_antidote) _dot_found_auto_update_antidote=1 ;;
+                    auto_update_dotfiles) _dot_found_auto_update_dotfiles=1 ;;
+                esac
+
+                if ! _dot_validate_config_value "$key" "$value"; then
+                    return 1  # corrupted - invalid value
+                fi
+            fi
+        else
+            # Check for malformed non-comment lines
+            if [[ ! "$line" =~ ^[[:space:]]*# ]] && [[ "$line" =~ [a-zA-Z] ]] && [[ "$line" != *"="* ]]; then
+                ((_dot_parse_errors++))
+            fi
+        fi
+    done < "$_DOT_CONFIG_FILE"
+
+    return 0
+}
+
+# Validate config parsing results and required keys
+# Uses global variables set by _dot_process_config_lines
+_dot_validate_config_results() {
+    # Check for corruption conditions
+    (( _dot_valid_lines == 0 )) && return 1  # no valid config lines
+    (( _dot_parse_errors > 0 )) && return 1  # parse errors found
+
+    # Check for missing required keys
+    [[ $_dot_found_selected_branch -eq 0 ]] && return 1
+    [[ $_dot_found_cache_duration -eq 0 ]] && return 1
+    [[ $_dot_found_network_timeout -eq 0 ]] && return 1
+    [[ $_dot_found_auto_update_antidote -eq 0 ]] && return 1
+    [[ $_dot_found_auto_update_dotfiles -eq 0 ]] && return 1
+
+    return 0
+}
+
+# Display config corruption warning message
+_dot_report_config_corruption() {
+    _dot_echo_warning "Config file appears corrupted. Run ${_CB}dotfiles edit${_CN} or ${_CB}dotfiles reset${_CN}."
+    _dot_echo_warning "Using default configuration."
+}
+
+# Display missing config file message
+_dot_report_config_missing() {
+    _dot_echo_warning "Config file not found. Using default configuration."
+}
+
+# Set config variable based on key
+_dot_set_config_var() {
+    local key="$1"
+    local value="$2"
+
+    case "$key" in
+        selected_branch) _DOT_SELECTED_BRANCH="$value" ;;
+        cache_duration) _DOT_CACHE_DURATION="$value" ;;
+        network_timeout) _DOT_NETWORK_TIMEOUT="$value" ;;
+        auto_update_antidote) _DOT_AUTO_UPDATE_ANTIDOTE="$value" ;;
+        auto_update_dotfiles) _DOT_AUTO_UPDATE_DOTFILES="$value" ;;
+    esac
+}
+
+# Load and validate configuration from file in a single pass
+_dot_load_and_validate_config() {
+    local key value line parse_result
+    local required_keys="selected_branch cache_duration network_timeout auto_update_antidote auto_update_dotfiles"
+
+    # Initialize validation statistics and tracking
+    local valid_lines=0 parse_errors=0
+    local found_selected_branch=0 found_cache_duration=0 found_network_timeout=0
+    local found_auto_update_antidote=0 found_auto_update_dotfiles=0
+
+    # File doesn't exist - report and use defaults
+    if [[ ! -f "$_DOT_CONFIG_FILE" ]]; then
+        _dot_report_config_missing
+        return 0  # Use defaults, no error
+    fi
+
+    # Read and process file in single pass
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Try to parse the line
+        parse_result=$(_dot_parse_config_line "$line" 2>/dev/null)
+        if [[ $? -eq 0 ]]; then
+            key="${parse_result%%$'\t'*}"
+            value="${parse_result#*$'\t'}"
+            ((valid_lines++))
+
+            # Check if this is a required config key
+            if [[ " $required_keys " == *" $key "* ]]; then
+                # Mark key as found
+                case "$key" in
+                    selected_branch) found_selected_branch=1 ;;
+                    cache_duration) found_cache_duration=1 ;;
+                    network_timeout) found_network_timeout=1 ;;
+                    auto_update_antidote) found_auto_update_antidote=1 ;;
+                    auto_update_dotfiles) found_auto_update_dotfiles=1 ;;
+                esac
+
+                # Validate and set the variable
+                if _dot_validate_config_value "$key" "$value"; then
+                    _dot_set_config_var "$key" "$value"
+                else
+                    _dot_report_config_corruption
+                    return 1
+                fi
+            else
+                # Unknown key - validate if it has a validator pattern
+                if [[ -n "$(_dot_get_validator "$key")" ]] && ! _dot_validate_config_value "$key" "$value"; then
+                    _dot_report_config_corruption
+                    return 1
+                fi
+            fi
+        else
+            # Check for malformed non-comment lines
+            if [[ ! "$line" =~ ^[[:space:]]*# ]] && [[ "$line" =~ [a-zA-Z] ]] && [[ "$line" != *"="* ]]; then
+                ((parse_errors++))
+            fi
+        fi
+    done < "$_DOT_CONFIG_FILE"
+
+    # Validate parsing results - check for corruption conditions
+    if (( valid_lines == 0 )) || (( parse_errors > 0 )); then
+        _dot_report_config_corruption
+        return 1
+    fi
+
+    # Check for missing required keys
+    if [[ $found_selected_branch -eq 0 ]] || [[ $found_cache_duration -eq 0 ]] || \
+       [[ $found_network_timeout -eq 0 ]] || [[ $found_auto_update_antidote -eq 0 ]] || \
+       [[ $found_auto_update_dotfiles -eq 0 ]]; then
+        _dot_report_config_corruption
+        return 1
+    fi
+
+    return 0
+}
+
+_dot_load_config() {
+    # Use new optimized function
+    _dot_load_and_validate_config
+}
+
+# Git command wrappers to eliminate repetition
+_dot_git() {
+    git -C "$DOTFILES" "$@"
+}
+
+_dot_git_quiet() {
+    _dot_git "$@" >/dev/null 2>&1
+}
+
+# Git command wrappers with network timeout support
+_dot_git_with_timeout() {
+    # Apply timeout to network operations (caller ensures this is only used for network ops)
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "${_DOT_NETWORK_TIMEOUT}s" git -C "$DOTFILES" "$@"
+    elif command -v gtimeout >/dev/null 2>&1; then
+        # macOS with GNU coreutils
+        gtimeout "${_DOT_NETWORK_TIMEOUT}s" git -C "$DOTFILES" "$@"
+    else
+        # Fallback without timeout on systems that don't have it
+        _dot_git "$@"
+    fi
+}
+
+_dot_git_with_timeout_quiet() {
+    _dot_git_with_timeout "$@" >/dev/null 2>&1
+}
+
+# Get file modification time (cross-platform)
+_dot_get_file_mtime() {
+    local file="$1"
+    if [[ "$OSTYPE" == darwin* ]]; then
+        stat -f %m "$file" 2>/dev/null || echo 0
+    else
+        stat -c %Y "$file" 2>/dev/null || echo 0
+    fi
+}
+
+# Common setup function
+_dot_setup() {
+    # Load configuration, exit early if corrupted
+    if ! _dot_load_and_validate_config; then
+        return 1
+    fi
+
+    # Exit early if DOTFILES environment variable is not set
+    if [[ -z "$DOTFILES" ]]; then
+        return 1
+    fi
+
+    # Exit early if dotfiles directory doesn't exist
+    if [[ ! -d "$DOTFILES" ]]; then
+        return 1
+    fi
+
+    # Exit early if $DOTFILES is not a git repository
+    if ! _dot_git_quiet rev-parse --git-dir; then
+        return 1
+    fi
+
+    # Determine target branch from config (with env var override)
+    _DOT_TARGET_BRANCH="$_DOT_SELECTED_BRANCH"
+
+    # Get current branch
+    _DOT_CURRENT_BRANCH=$(_dot_git branch --show-current)
+
+    return 0
+}

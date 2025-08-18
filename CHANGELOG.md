@@ -1,9 +1,6 @@
 # dotfiles Changelog
 
-## [1.0.1] - 2025-07-17
+## [2.0.0] - 2025-08-17
 
-### Added
+- Major update with comprehensive improvements to the dotfiles management system. Documentation is forthcoming.
 
-- Added new scheduled `dotfiles-check-update` function to detection changes in the dotfiles repository and prompt user for updates.
-- Scheduled check runs when terminal opens, but only one time every 12 hours for performance.
-- Added new `dotfiles-update` function to apply updates with a single command.

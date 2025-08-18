@@ -3,6 +3,7 @@
 # When the repo’s a mess
 # Full of stuff to suppress, .gitignore
 
+# Ignore Zsh-related files
 .antidote/
 .zcompcache/
 .zsh_sessions/
