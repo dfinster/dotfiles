@@ -3,7 +3,6 @@
 # dotfiles - Lightweight dispatcher for dotfiles management
 #
 
-
 # Ensure DOTFILES is set
 if [[ -z "$DOTFILES" ]]; then
     echo -e "\033[91mError:\033[0m DOTFILES environment variable is not set" >&2
@@ -32,11 +31,14 @@ case "$1" in
     branch)
         "$DOTFILES/scripts/dotfiles-branch" "$2"
         ;;
-    config)
-        "$DOTFILES/scripts/dotfiles-config" "${@:2}"
+    edit)
+        "$DOTFILES/scripts/dotfiles-config" "edit"
         ;;
-    doctor)
-        "$DOTFILES/scripts/dotfiles-doctor" "${@:2}"
+    show)
+        "$DOTFILES/scripts/dotfiles-config" "show"
+        ;;
+    reset)
+        "$DOTFILES/scripts/dotfiles-config" "reset"
         ;;
     help|--help|-h|"")
         "$DOTFILES/scripts/dotfiles-help" "${@:2}"
