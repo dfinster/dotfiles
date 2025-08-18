@@ -1,0 +1,24 @@
+#!/bin/zsh
+#
+# dotfiles-help - Help system for dotfiles management
+
+# Source shared utilities
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+source "$script_dir/dotfiles-shared"
+
+echo -e "Dotfiles Management System"
+echo
+echo -e "Commands:"
+echo
+echo -e "  ${_CB}dotfiles update${_CN}          Update from remote repository"
+echo -e "  ${_CB}dotfiles check${_CN}           Check for updates without applying"
+echo -e "  ${_CB}dotfiles branch <name>${_CN}   Switch to a different branch"
+echo -e "  ${_CB}dotfiles show${_CN}            Display current config"
+echo -e "  ${_CB}dotfiles edit${_CN}            Edit config file"
+echo -e "  ${_CB}dotfiles reset${_CN}           Reset config to default"
+echo
+echo -e "Configuration:"
+echo
+echo -e "  Config file:  ${_CB}$_DOT_CONFIG_FILE${_CN}"
+echo -e "  Dotfiles dir: ${_CB}${DOTFILES:-<not set>}${_CN}"
+echo

@@ -44,4 +44,6 @@ Personal macOS dotfiles configuration for a modern shell environment with enhanc
 - **Update Notifications**: Notifies user of available updates with details on commits and changes
 - **Cached results**: Only checks once every 12 hours to improve terminal startup time
 
-For more information, see the documentation at [docs.fortc.com/dotfiles](https://docs.fortc.com/dotfiles).
+For more information, see the [documentation](docs/index.md).
+
+Testing update

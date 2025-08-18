@@ -1,0 +1,73 @@
+#!/bin/zsh
+#
+# dotfiles-update - Update dotfiles from remote repository
+
+# Source shared utilities
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+source "$script_dir/dotfiles-shared"
+
+# Always run setup first for config loading and corruption detection
+if ! _dot_setup; then
+    exit 1
+fi
+
+# Handle branch mismatch between environment and git repository
+if [[ "$_DOT_TARGET_BRANCH" != "$_DOT_CURRENT_BRANCH" ]]; then
+    echo
+    _dot_echo_info "dotfiles configuration mismatch detected."
+    _dot_echo_info "dotfiles is on the ${_CB}'$_DOT_CURRENT_BRANCH'${_CN} branch."
+    _dot_echo_info "dotfiles config is set to the ${_CB}'$_DOT_TARGET_BRANCH'${_CN} branch."
+    _dot_echo_info "Please use ${_CB}'dotfiles branch <branchname>'${_CN} to choose a branch."
+    exit 1  # Mismatch detected, stop processing (failure)
+fi
+
+_dot_echo_info "Updating dotfiles..."
+
+# Stash local changes before update, if there are any
+if ! _dot_git_quiet diff-index --quiet HEAD --; then
+    # Attempt to stash changes
+    if ! _dot_git_quiet stash push -m "Auto-stash before dotfiles update $(date)"; then
+        _dot_echo_error "Failed to stash local changes (git stash failed)"
+        exit 1
+    fi
+    stash_created=true
+    _dot_echo_info "Local changes stashed."
+fi
+
+# Perform git pull and update plugins
+if ! _dot_git_with_timeout_quiet pull origin "$_DOT_TARGET_BRANCH"; then
+    _dot_echo_error "Update failed."
+    exit 1
+fi
+
+_dot_echo_info "Dotfiles updated successfully."
+
+# Update antidote plugins if enabled and available
+if [[ "$_DOT_AUTO_UPDATE_ANTIDOTE" == "true" ]]; then
+    # Check if antidote is installed by looking for the installation directory
+    if [[ -d "${ZDOTDIR:-$HOME}/.antidote" ]]; then
+        _dot_echo_info "Updating antidote plugins..."
+        # Source antidote and run update
+        if source "${ZDOTDIR:-$HOME}/.antidote/antidote.zsh" && antidote update >/dev/null 2>&1; then
+            _dot_echo_info "Antidote plugins updated successfully."
+        else
+            _dot_echo_warning "Antidote plugin update failed, but dotfiles update succeeded."
+        fi
+    else
+        _dot_echo_warning "Antidote not available, skipping plugin updates."
+    fi
+else
+    _dot_echo_info "Antidote auto-update is disabled (auto_update_antidote=false)."
+fi
+
+# Restore stashed changes, if we created a stash
+if [[ $stash_created == "true" ]]; then
+    if _dot_git_quiet stash pop; then
+        _dot_echo_info "Local stash restored successfully."
+    else
+        _dot_echo_warning "Local stash could not be restored; you may need to resolve conflicts manually."
+        _dot_echo_warning "You can view the stash with 'git stash list' and apply it manually if needed."
+    fi
+fi
+
+_dot_echo_info "Please restart your terminal to apply all changes."

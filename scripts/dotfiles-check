@@ -1,0 +1,70 @@
+#!/bin/zsh
+#
+# dotfiles check - check for new versions
+
+# Source shared utilities
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+source "$script_dir/dotfiles-shared"
+
+check_type="$1"
+# Always run setup first for config loading and corruption detection
+if ! _dot_setup; then
+    exit 1  # Setup failed, stop processing
+fi
+
+# If running at startup and $_DOT_AUTO_UPDATE_DOTFILES is false, the skip the check
+if [[ "$check_type" == "startup" ]] && [[ "$_DOT_AUTO_UPDATE_DOTFILES" == "false" ]]; then
+    exit 0 # Skip remote check at startup if auto updates are disabled
+fi
+
+if [[ "$check_type" == "startup" ]]; then
+    # Test timestamp of $_DOT_CACHE_FILE to determine if we should skip remote check
+    if [[ -f "$_DOT_CACHE_FILE" ]]; then
+        cache_time=$(_dot_get_file_mtime "$_DOT_CACHE_FILE")
+        current_time=$(date +%s)
+        if (( current_time - cache_time < _DOT_CACHE_DURATION )); then
+            exit 0  # Timeout has not expired, skip remote check
+        fi
+    fi
+fi
+
+# Inform user the check is beginning
+_dot_echo_info "Checking GitHub for dotfiles updates."
+if [[ "$_DOT_TARGET_BRANCH" != "$_DOT_CURRENT_BRANCH" ]]; then
+    echo
+    _dot_echo_info "dotfiles configuration mismatch detected."
+    _dot_echo_info "dotfiles is on the ${_CB}'$_DOT_CURRENT_BRANCH'${_CN} branch."
+    _dot_echo_info "dotfiles config is set to the ${_CB}'$_DOT_TARGET_BRANCH'${_CN} branch."
+    _dot_echo_info "Please use ${_CB}'dotfiles branch <branchname>'${_CN} to choose a branch."
+    exit 1  # Mismatch detected, stop processing
+fi
+
+# Check if we can reach GitHub (fail silently without error if offline)
+_dot_echo_info "Please unlock SSH key if prompted."
+if ! _dot_git_with_timeout_quiet ls-remote origin; then
+    exit 0
+fi
+
+# Fetch latest remote information
+_dot_git_with_timeout_quiet fetch origin "$_DOT_TARGET_BRANCH"
+
+# Update cache file to record successful check
+touch "$_DOT_CACHE_FILE"
+
+# Check if local branch is behind remote
+if ! commits_behind=$(_dot_git rev-list --count HEAD..origin/"$_DOT_TARGET_BRANCH" 2>/dev/null) || [[ -z "$commits_behind" ]]; then
+    _dot_echo_error "Failed to check for updates (git rev-list failed)"
+    exit 1
+fi
+
+if [[ "$commits_behind" -eq 0 ]]; then
+    _dot_echo_info "Your dotfiles are up to date."
+else
+    # Show what's new and prompt user to run update
+    _dot_echo_info "Newer dotfiles are available."
+    _dot_echo_info "You are ${_CB}${commits_behind}${_CN} commit(s) behind the ${_CB}$_DOT_TARGET_BRANCH${_CN} branch."
+    echo
+    _dot_echo_info "- See changelog at '${_CB}$_DOT_GITHUB_URL/blob/$_DOT_TARGET_BRANCH/CHANGELOG.md${_CN}' for details."
+    _dot_echo_info "- Run '${_CB}dotfiles update${_CN}' to update."
+    _dot_echo_info "Run ${_CB}dotfiles help${_CN} for options."
+fi

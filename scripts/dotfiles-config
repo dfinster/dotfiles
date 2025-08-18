@@ -1,0 +1,133 @@
+#!/bin/zsh
+#
+# dotfiles-config - Configuration management for dotfiles
+
+# Source shared utilities
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+source "$script_dir/dotfiles-shared"
+
+# Config display function
+_dot_config_show() {
+    # Load current configuration
+    if ! _dot_load_config; then
+        _dot_echo_error "Failed to load configuration. Run ${_CB}dotfiles edit${_CN} or ${_CB}dotfiles reset${_CN} to fix the error."
+        return 1
+    fi
+
+    echo -e "${_CB}Current Configuration:${_CN}"
+    echo
+
+    # Display config file location
+    echo -e "  ${_CB}Config file:${_CN} $_DOT_CONFIG_FILE"
+
+    echo
+    echo -e "${_CB}Settings:${_CN}"
+
+    # Use simple variables instead of associative arrays for compatibility
+    local file_selected_branch="" file_cache_duration="" file_network_timeout="" file_auto_update_antidote="" file_auto_update_dotfiles=""
+
+    # Display each configuration value with source indication
+    local keys=(selected_branch cache_duration network_timeout auto_update_antidote auto_update_dotfiles)
+    local current_values=("$_DOT_SELECTED_BRANCH" "$_DOT_CACHE_DURATION" "$_DOT_NETWORK_TIMEOUT" "$_DOT_AUTO_UPDATE_ANTIDOTE" "$_DOT_AUTO_UPDATE_DOTFILES")
+
+    # Print table header
+    echo -e "  ${_CB}$(printf "%-22s %-15s %s" "Setting" "Current Value" "Default Value")${_CN}"
+    echo -e "  $(printf "%-22s %-15s %s" "-------" "-------------" "-------------")"
+
+    for i in {1..5}; do
+        local key="${keys[$i]}"
+        local current_value="${current_values[$i]}"
+        local default_value="$(_dot_get_default "$key")"
+
+        echo -e "  $(printf "%-22s %-15s %s" "$key" "$current_value" "$default_value")"
+    done
+
+    echo
+    echo -e "${_CB}Commands:${_CN}"
+    echo -e "  ${_CB}dotfiles config edit${_CN}      Edit configuration in \$EDITOR"
+    echo -e "  ${_CB}dotfiles config reset${_CN}     Reset to default values"
+}
+
+# Config editing function with validation
+_dot_config_edit() {
+    echo -e "${_CB}Editing${_CN} $_DOT_CONFIG_FILE"
+
+    # Ensure config file exists
+    if ! _dot_load_config; then
+        _dot_echo_error "Failed to load configuration. Run ${_CB}dotfiles edit${_CN} or ${_CB}dotfiles reset${_CN} to fix the error."
+        return 1
+    fi
+
+    # Launch editor and wait for completion
+    ${EDITOR:-code} "$_DOT_CONFIG_FILE"
+}
+
+# Config reset function with backup
+_dot_config_reset() {
+    echo -e "${_CB}Configuration Reset:${_CN}"
+    echo
+
+    # Confirmation prompt
+    _dot_echo_warning "This will reset configuration to default."
+    echo
+    echo -n "Continue with reset? [y/N]: "
+    read -r REPLY
+    echo
+
+    if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
+        echo -e "  ${_CB}Info:${_CN} Configuration was not reset."
+        return 0
+    fi
+
+    # Generate new config
+    # Ensure parent directory exists
+    local config_dir="$(dirname "$_DOT_CONFIG_FILE")"
+    local timestamp=$(date +%Y%m%d%H%M%S)
+    _dot_echo_info "Resetting configuration to default."
+
+    # Create temporary file for atomic replacement
+    local temp_file="${_DOT_CONFIG_FILE}.tmp_${timestamp}"
+
+    # Generate config file content
+    echo "# Dotfiles Configuration" > "$temp_file"
+    echo "# This file is not tracked in git and contains user-specific settings" >> "$temp_file"
+    echo "# You can edit this file to customize your dotfiles settings" >> "$temp_file"
+    echo >> "$temp_file"
+    echo "auto_update_dotfiles=$_DOT_DEFAULT_AUTO_UPDATE_DOTFILES" >> "$temp_file"
+    echo "auto_update_antidote=$_DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE" >> "$temp_file"
+    echo "selected_branch=$_DOT_DEFAULT_SELECTED_BRANCH" >> "$temp_file"
+    echo "cache_duration=$_DOT_DEFAULT_CACHE_DURATION"  >> "$temp_file"
+    echo "network_timeout=$_DOT_DEFAULT_NETWORK_TIMEOUT" >> "$temp_file"
+
+    # Verify temp file was created correctly
+    if [[ ! -f "$temp_file" ]] || [[ ! -s "$temp_file" ]]; then
+        _dot_echo_error "Failed to create temporary config file."
+        rm -f "$temp_file"
+        exit 1 # Exit with error
+    fi
+
+    # Atomic replacement
+    if ! mv "$temp_file" "$_DOT_CONFIG_FILE"; then
+        _dot_echo_error "Failed to replace config file."
+        rm -f "$temp_file"
+        exit 1 # Exit with error
+    fi
+
+    _dot_echo_info "New config created."
+    _dot_echo_info "Edit ${_CB}$_DOT_CONFIG_FILE${_CN} to customize your settings."
+
+    return 0
+}
+
+# Config subcommand dispatcher
+case "$1" in
+    show)
+        _dot_config_show
+        ;;
+    edit)
+        _dot_config_edit
+        ;;
+    reset)
+        _dot_config_reset
+        ;;
+esac
