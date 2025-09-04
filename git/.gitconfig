@@ -2,149 +2,139 @@
 # Shared Git Configuration File
 # ==================================================
 
-# Include additional local configuration if inside ~/
-[includeIf "gitdir:~/"]        # extra config when working in home repos
-  path = ~/.gitconfig.local    # file to include
+# ==================================================
+# Local additional configuration
+# ==================================================
+[includeIf "gitdir:~/"]
+  # If working inside the home dir, include this extra config
+  path = ~/.gitconfig.local
 
 # ==================================================
 # Core Behavior
 # ==================================================
-
-# Globally ignore these files in all repositories
-# Set VS Code as the default Git editor
-# Normalize line endings (useful for cross-platform teams)
-[core]                           # core settings
-  editor = code --wait           # open VS Code and wait
-  autocrlf = input               # convert CRLF to LF on commit
+[core]
+  # Use VS Code for commit messages
+  editor = code --wait
+  # Convert line endings from CRLF to LF
+  autocrlf = input
+  # Global ignore in all repositories
 	excludesfile = ~/.config/dotfiles/git/.gitignore_global
-
-# Enable automatic color output
-[color]                         # color output
-  ui = auto                     # enable color in all commands
-
-# Default branch name for new repositories
-[init]                          # initialization defaults
-  defaultBranch = main          # new repos start on main
-
-# ==================================================
-# Commit Signing (GPG/SSH)
-# ==================================================
-
-# Use SSH keys for commit signing
-[gpg]                           # commit signing
-  format = ssh                  # sign using SSH keys
-
-# Always GPG-sign commits
-# Include the full unified diff of staged changes when writing commit message
-[commit]                        # commit defaults
-  gpgsign = true                # sign commits automatically
-  verbose = true                # show diff in editor
-
-[tag]
-	gpgSign = true                # sign tags automatically
-
-# Use 1Password to sign with SSH keys
-# Allowed SSH public keys for verification
-[gpg "ssh"]                     # SSH signing tool
-  program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign # 1Password integration
-  allowedSignersFile = ~/.ssh/allowed_signers                       # allowed signer list
-
-# ==================================================
-# Git LFS
-# ==================================================
-
-# Use efficient LFS filter process
-# Require LFS for proper repo operation
-[filter "lfs"]                      # git LFS settings
-  process = git-lfs filter-process  # filter process used by LFS
-  required = true                   # enforce use of LFS
-  clean = git-lfs clean -- %f
-	smudge = git-lfs smudge -- %f
-
-# ==================================================
-# Aliases
-# ==================================================
-
-[alias]                        # command shortcuts
-  # Basic commands
-  co = checkout                # short for git checkout
-  br = branch                  # list or create branches
-  ci = commit                  # commit staged changes
-  st = status                  # show status
-
-  # Log and history views
-  lg = log --oneline --graph --decorate --all     # pretty log graph
-  lol = log --oneline --graph --decorate --all    # alias for lg
-  hist = log --pretty=format:'%C(yellow)%h%Creset %ad | %s%C(bold blue) [%an]%Creset' --date=short  # short history
-  lgraph = log --all --graph --decorate --abbrev-commit --date=relative --pretty=format:'%C(auto)%h %d %s %C(blue)(%cr) %C(green)<%an>' # fancy graph
-  last = log -1 HEAD           # show last commit
-
-  # Commit and reset helpers
-  amend = commit --amend --no-edit   # amend last commit without editing
-  unstage = reset HEAD --            # unstage files
-  undo = reset --soft HEAD~1         # undo last commit but keep changes
-
-  # Object inspection
-  type = cat-file -t            # show object type
-  dump = cat-file -p            # print object contents
-
-  # Stash shortcuts
-  save = stash push -m "WIP"    # save work in progress
-  pop = stash pop               # restore last stash
-
-# ==================================================
-# Push and Pull Behavior
-# ==================================================
-
-# Push the current branch only to its matching upstream
-[push]                         # pushing behavior
-  default = simple             # push current branch only
-
-# Use rebase instead of merge when pulling changes
-[pull]                         # pulling behavior
-  rebase = true                # rebase instead of merge
-
-# ==================================================
-# Merge and Rebase Behavior
-# ==================================================
-
-# Show ancestor information in conflict markers
-[merge]                        # merge conflict style
-  conflictstyle = diff3        # show ancestor diff
-
-# Auto-squash fixup! and squash! commits during rebase
-[rebase]                       # rebase options
-  autoSquash = true            # autosquash fixup commits
-
-# Remember conflict resolutions to reuse automatically
-[rerere]                       # reuse recorded resolutions
-  enabled = true               # enable rerere
+[color]
+  # Enable color in all commands
+  ui = auto
+[init]
+  # New repos start on main
+  defaultBranch = main
 
 # ==================================================
 # Diff Tool Configuration
 # ==================================================
-
-# Set VS Code as the diff tool
-[diff]                         # diff tool
-  tool = vscode                # use VS Code
-
-# Command to launch VS Code for diffs
-[difftool "vscode"]            # VS Code diff command
-  cmd = code --wait --diff $LOCAL $REMOTE  # open diff view
-
+[diff]
+  # Set VS Code as the diff tool
+  tool = vscode
+[difftool "vscode"]
+  # Command to launch VS Code for diffs
+  cmd = code --wait --diff $LOCAL $REMOTE
 [difftool]
+  # Don't prompt before launching diff tool
   prompt = false
+
+# ==================================================
+# Commit Signing Behavior
+# ==================================================
+[gpg]
+  # Sign using SSH keys
+  format = ssh
+
+[commit]
+  # Always GPG-sign commits
+  gpgsign = true
+  # Show diff of all staged changes when writing commit message
+  verbose = true
+
+[tag]
+  # Sign tags automatically
+	gpgSign = true
+
+[gpg "ssh"]
+  # Use 1Password SSH signing keys
+  program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+  # Allowed signer list
+  allowedSignersFile = ~/.ssh/allowed_signers
+
+# ==================================================
+# Git LFS
+# ==================================================
+[filter "lfs"]
+  process = git-lfs filter-process  # Use efficient LFS filter process
+  required = true                   # Enforce use of LFS
+  clean = git-lfs clean -- %f       # Prepare files for storage in LFS
+	smudge = git-lfs smudge -- %f     # Restore files from LFS when checking out
+
+# ==================================================
+# Aliases
+# ==================================================
+[alias]
+  co = checkout
+  br = branch
+  ci = commit
+  st = status
+  # Pretty log graph
+  lg = log --oneline --graph --decorate --all
+  # Short history
+  hist = log --pretty=format:'%C(yellow)%h%Creset %ad | %s%C(bold blue) [%an]%Creset' --date=short
+  # Fancy graph
+  lgraph = log --all --graph --decorate --abbrev-commit --date=relative --pretty=format:'%C(auto)%h %d %s %C(blue)(%cr) %C(green)<%an>'
+  # Show last commit
+  last = log -1 HEAD
+  # Amend last commit without changing message
+  amend = commit --amend --no-edit
+  # Unstage all files
+  unstage = reset HEAD --
+  # Undo last commit but keep changes
+  undo = reset --soft HEAD~1
+  # Show object type
+  type = cat-file -t
+  # Print object contents
+  dump = cat-file -p
+  # Stash work in progress
+  save = stash push -m "WIP"
+  # Restore last stash
+  pop = stash pop
+
+# ==================================================
+# Push and Pull Behavior
+# ==================================================
+[push]
+  # Push the current branch only to its matching upstream
+  default = simple
+[pull]
+  # Use rebase instead of merge when pulling changes
+  rebase = true
+
+# ==================================================
+# Merge and Rebase Behavior
+# ==================================================
+[merge]
+  # Show ancestor information in conflict markers
+  conflictstyle = diff3
+[rebase]
+  # Auto-squash fixup! and squash! commits during rebase
+  autoSquash = true
+[rerere]
+  # Remember conflict resolutions to reuse automatically (reuse recorded resolutions)
+  enabled = true
 
 # ==================================================
 # Credential Management
 # ==================================================
-
-# Use macOS Keychain for storing Git credentials
-[credential]                   # credential helper
-  helper = osxkeychain         # store creds in Keychain
+[credential]
+  # Use macOS Keychain for storing Git credentials
+  helper = osxkeychain
 
 # ==================================================
 # URL Rewriting to use SSH for GitHub
 # ==================================================
-[url "git@github.com:"]            # rewrite GitHub URLs to SSH
-  insteadOf = https://github.com/  # replace https with ssh
+[url "git@github.com:"]
+  # rewrite GitHub URLs to SSH
+  insteadOf = https://github.com/
