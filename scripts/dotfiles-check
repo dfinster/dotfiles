@@ -1,6 +1,6 @@
 #!/bin/zsh
 #
-# dotfiles check - check for new versions
+# dotfiles check - compare local VERSION with remote VERSION on GitHub
 
 # Source shared utilities
 script_dir="$(cd "$(dirname "$0")" && pwd)"
@@ -39,32 +39,40 @@ if [[ "$_DOT_TARGET_BRANCH" != "$_DOT_CURRENT_BRANCH" ]]; then
     exit 1  # Mismatch detected, stop processing
 fi
 
-# Check if we can reach GitHub (fail silently without error if offline)
-_dot_echo_info "Please unlock SSH key if prompted."
-if ! _dot_git_with_timeout_quiet ls-remote origin; then
-    exit 0
+# Local VERSION file
+local_version_file="${0:A:h:h}/VERSION"
+if [[ ! -f "$local_version_file" ]]; then
+    _dot_echo_error "Local VERSION file not found: $local_version_file"
+    exit 1
 fi
+local_version=$(<"$local_version_file")
 
-# Fetch latest remote information
-_dot_git_with_timeout_quiet fetch origin "$_DOT_TARGET_BRANCH"
-
-# Update cache file to record successful check
-touch "$_DOT_CACHE_FILE"
-
-# Check if local branch is behind remote
-if ! commits_behind=$(_dot_git rev-list --count HEAD..origin/"$_DOT_TARGET_BRANCH" 2>/dev/null) || [[ -z "$commits_behind" ]]; then
-    _dot_echo_error "Failed to check for updates (git rev-list failed)"
+# Fetch remote VERSION file
+remote_version=$(curl -fsSL "https://raw.githubusercontent.com/$_DOT_OWNER/$_DOT_REPO/$_DOT_SELECTED_BRANCH/VERSION" 2>/dev/null)
+if [[ -z "$remote_version" ]]; then
+    echo "Failed to fetch remote VERSION file."
     exit 1
 fi
 
-if [[ "$commits_behind" -eq 0 ]]; then
+# Strip leading 'v' from both versions
+local_version_stripped="${local_version#v}"
+remote_version_stripped="${remote_version#v}"
+
+# Semantic version comparison
+if [[ "$local_version_stripped" == "$remote_version_stripped" ]]; then
     _dot_echo_info "Your dotfiles are up to date."
 else
-    # Show what's new and prompt user to run update
-    _dot_echo_info "Newer dotfiles are available."
-    _dot_echo_info "You are ${_CB}${commits_behind}${_CN} commit(s) behind the ${_CB}$_DOT_TARGET_BRANCH${_CN} branch."
-    echo
+    # Use sort -V to compare
+    cmp_result=$(printf "%s\n%s" "$local_version_stripped" "$remote_version_stripped" | sort -V | head -n1)
+    if [[ "$cmp_result" == "$local_version_stripped" ]]; then
+        _dot_echo_info "Local dotfiles VERSION ($local_version) is OLDER than remote ($remote_version)."
+    else
+        _dot_echo_info "Local dotfiles VERSION ($local_version) is NEWER than remote ($remote_version)."
+    fi
     _dot_echo_info "- See changelog at '${_CB}$_DOT_GITHUB_URL/blob/$_DOT_TARGET_BRANCH/CHANGELOG.md${_CN}' for details."
     _dot_echo_info "- Run '${_CB}dotfiles update${_CN}' to update."
     _dot_echo_info "Run ${_CB}dotfiles help${_CN} for options."
 fi
+
+# Update cache file to record successful check
+touch "$_DOT_CACHE_FILE"

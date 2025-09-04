@@ -15,7 +15,11 @@ readonly _DOT_DEFAULT_CACHE_DURATION="172800"  # 2 days in seconds
 readonly _DOT_DEFAULT_NETWORK_TIMEOUT="30"
 readonly _DOT_DEFAULT_AUTO_UPDATE_ANTIDOTE="true"
 readonly _DOT_DEFAULT_AUTO_UPDATE_DOTFILES="true"
-readonly _DOT_GITHUB_URL="https://github.com/dfinster/dotfiles"
+
+# Set repo info
+readonly _DOT_OWNER="dfinster"
+readonly _DOT_REPO="dotfiles"
+readonly _DOT_GITHUB_URL="https://github.com/$_DOT_OWNER/$_DOT_REPO"
 
 # Color constants
 readonly _CR='\033[91m' # Color Red
