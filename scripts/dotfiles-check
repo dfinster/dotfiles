@@ -29,7 +29,6 @@ if [[ "$check_type" == "startup" ]]; then
 fi
 
 # Inform user the check is beginning
-_dot_echo_info "Checking GitHub for dotfiles updates."
 if [[ "$_DOT_TARGET_BRANCH" != "$_DOT_CURRENT_BRANCH" ]]; then
     echo
     _dot_echo_info "dotfiles configuration mismatch detected."
@@ -60,18 +59,20 @@ remote_version_stripped="${remote_version#v}"
 
 # Semantic version comparison
 if [[ "$local_version_stripped" == "$remote_version_stripped" ]]; then
-    _dot_echo_info "Your dotfiles are up to date."
+    if [[ "$check_type" != "startup" ]]; then
+        _dot_echo_info "Your dotfiles are up to date."
+    fi
 else
     # Use sort -V to compare
     cmp_result=$(printf "%s\n%s" "$local_version_stripped" "$remote_version_stripped" | sort -V | head -n1)
     if [[ "$cmp_result" == "$local_version_stripped" ]]; then
-        _dot_echo_info "Local dotfiles VERSION ($local_version) is OLDER than remote ($remote_version)."
+        _dot_echo_info "Local dotfiles ${_CY}$local_version${_CN} are older than remote ${_CY}$remote_version${_CN}."
+        _dot_echo_info "See ${_CB}$_DOT_GITHUB_URL/blob/$_DOT_TARGET_BRANCH/CHANGELOG${_CN}"
+        _dot_echo_info "Run ${_CB}dotfiles update${_CN} to update."
+        _dot_echo_info "Run ${_CB}dotfiles help${_CN} for options."
     else
-        _dot_echo_info "Local dotfiles VERSION ($local_version) is NEWER than remote ($remote_version)."
+        _dot_echo_info "Local dotfiles ${_CY}$local_version${_CN} are newer than remote ${_CY}$remote_version${_CN}."
     fi
-    _dot_echo_info "- See changelog at '${_CB}$_DOT_GITHUB_URL/blob/$_DOT_TARGET_BRANCH/CHANGELOG.md${_CN}' for details."
-    _dot_echo_info "- Run '${_CB}dotfiles update${_CN}' to update."
-    _dot_echo_info "Run ${_CB}dotfiles help${_CN} for options."
 fi
 
 # Update cache file to record successful check

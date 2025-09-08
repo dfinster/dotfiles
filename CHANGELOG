@@ -1,0 +1,5 @@
+# Changelog
+
+- v2.0.1 - 2025-09-08 - Faster version checking without SSH or GPG key requirement. Improved gitconfig comments.
+- v2.0.0 - 2025-08-17 - Major update with comprehensive improvements to the dotfiles management system.
+- v1.0.0 - Sometime in the summer of 2025 - First functioning version

@@ -15,13 +15,17 @@
 [core]
   # Use VS Code for commit messages
   editor = code --wait
+
   # Convert line endings from CRLF to LF
   autocrlf = input
+
   # Global ignore in all repositories
 	excludesfile = ~/.config/dotfiles/git/.gitignore_global
+
 [color]
   # Enable color in all commands
   ui = auto
+
 [init]
   # New repos start on main
   defaultBranch = main
@@ -32,9 +36,11 @@
 [diff]
   # Set VS Code as the diff tool
   tool = vscode
+
 [difftool "vscode"]
   # Command to launch VS Code for diffs
   cmd = code --wait --diff $LOCAL $REMOTE
+
 [difftool]
   # Don't prompt before launching diff tool
   prompt = false
@@ -49,6 +55,7 @@
 [commit]
   # Always GPG-sign commits
   gpgsign = true
+
   # Show diff of all staged changes when writing commit message
   verbose = true
 
@@ -59,17 +66,39 @@
 [gpg "ssh"]
   # Use 1Password SSH signing keys
   program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+
   # Allowed signer list
   allowedSignersFile = ~/.ssh/allowed_signers
+
+# ==================================================
+# Credential Management
+# ==================================================
+[credential]
+  # Use macOS Keychain for storing Git credentials
+  helper = osxkeychain
+
+# ==================================================
+# URL Rewriting: Always use SSH for GitHub
+# ==================================================
+[url "git@github.com:"]
+  # rewrite GitHub URLs to SSH
+  insteadOf = https://github.com/
 
 # ==================================================
 # Git LFS
 # ==================================================
 [filter "lfs"]
-  process = git-lfs filter-process  # Use efficient LFS filter process
-  required = true                   # Enforce use of LFS
-  clean = git-lfs clean -- %f       # Prepare files for storage in LFS
-	smudge = git-lfs smudge -- %f     # Restore files from LFS when checking out
+  # Use efficient LFS filter process
+  process = git-lfs filter-process
+
+  # Enforce use of LFS
+  required = true
+
+  # Prepare files for storage in LFS
+  clean = git-lfs clean -- %f
+
+  # Restore files from LFS when checking out
+	smudge = git-lfs smudge -- %f
 
 # ==================================================
 # Aliases
@@ -79,26 +108,37 @@
   br = branch
   ci = commit
   st = status
+
   # Pretty log graph
   lg = log --oneline --graph --decorate --all
+
   # Short history
   hist = log --pretty=format:'%C(yellow)%h%Creset %ad | %s%C(bold blue) [%an]%Creset' --date=short
+
   # Fancy graph
   lgraph = log --all --graph --decorate --abbrev-commit --date=relative --pretty=format:'%C(auto)%h %d %s %C(blue)(%cr) %C(green)<%an>'
+
   # Show last commit
   last = log -1 HEAD
+
   # Amend last commit without changing message
   amend = commit --amend --no-edit
+
   # Unstage all files
   unstage = reset HEAD --
+
   # Undo last commit but keep changes
   undo = reset --soft HEAD~1
+
   # Show object type
   type = cat-file -t
+
   # Print object contents
   dump = cat-file -p
+
   # Stash work in progress
   save = stash push -m "WIP"
+
   # Restore last stash
   pop = stash pop
 
@@ -108,6 +148,7 @@
 [push]
   # Push the current branch only to its matching upstream
   default = simple
+
 [pull]
   # Use rebase instead of merge when pulling changes
   rebase = true
@@ -118,23 +159,11 @@
 [merge]
   # Show ancestor information in conflict markers
   conflictstyle = diff3
+
 [rebase]
   # Auto-squash fixup! and squash! commits during rebase
   autoSquash = true
+
 [rerere]
   # Remember conflict resolutions to reuse automatically (reuse recorded resolutions)
   enabled = true
-
-# ==================================================
-# Credential Management
-# ==================================================
-[credential]
-  # Use macOS Keychain for storing Git credentials
-  helper = osxkeychain
-
-# ==================================================
-# URL Rewriting to use SSH for GitHub
-# ==================================================
-[url "git@github.com:"]
-  # rewrite GitHub URLs to SSH
-  insteadOf = https://github.com/
