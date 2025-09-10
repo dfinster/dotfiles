@@ -1,49 +1,152 @@
 # dotfiles
 
-Personal macOS dotfiles configuration for a modern shell environment with enhanced productivity features.
+This project is my opinionated Zsh startup system. It's designed for macOS with Git, NVM, Yarn, direnv, Atuin, and VS Code. It uses Antidote and concepts from the [zdotdir](https://github.com/getantidote/zdotdir) project.
 
-## Main Features
+## Installation 
 
-### Shell Environment
-- **Zsh with Powerlevel10k**: Modern shell with a fast, customizable prompt featuring Git integration and visual indicators, such as Python virtual environments
-- **Modular Configuration**: Organized .zshrc.d/ directory for easy management of shell configurations
-- **XDG Base Directory Support**: Follows XDG standards for clean home directory organization
+### Prerequisites
 
-### Plugin Management
-- **Antidote Plugin Manager**: Lightning-fast plugin loading with automatic installation
-- **Curated Plugin Collection**: Includes syntax highlighting, autosuggestions, completions, and development tools
-- **Tool Integration**: Native support for Git, NVM, Yarn, direnv, and more
+#### Required 
 
-### Enhanced Terminal Experience
-- **Atuin History**: Intelligent command history with search, sync, and filtering capabilities
-- **256 Color Support**: Rich terminal colors for better visual experience
-- **Smart Completions**: Fast completion system with additional Zsh completions
+These are **required** and must be installed before dotfiles.
 
-### Development Tools Integration
-- **VS Code Integration**: Seamless editor integration with proper terminal behavior via code-wait wrapper
-- **Git Configuration**: Comprehensive Git setup with SSH signing, aliases, and VS Code as diff tool
+- Zsh
+- Curl
+- Git
+- 1Password
+- Homebrew
+- Atuin
+- direnv
+- eza
+- pyenv
+- Visual Studio Code
 
-### Advanced Git Features
-- **SSH Commit Signing**: Automatic commit signing with SSH keys via 1Password
-- **Comprehensive Aliases**: Extensive Git aliases for common workflows
-- **Smart Defaults**: Rebase on pull, auto-squash, conflict resolution memory (rerere)
-- **GitHub SSH Rewriting**: Automatic HTTPS-to-SSH URL conversion for GitHub repos
+#### Optional 
 
-### Security & Privacy
-- **Credential Management**: macOS Keychain integration for secure credential storage
-- **Secret Filtering**: Atuin automatically filters sensitive information from history
-- **Secure Defaults**: Security-focused Git and shell configurations
+These are optional, but if you plan to use them they should be installed before dotfiles. If you add these later, they may add (or request that you add) unneeded lines to your configuration.
 
-### System Integration
-- **Homebrew Support**: Automatic Homebrew environment setup when available
-- **OrbStack Integration**: Container development environment support
-- **Path Management**: Intelligent PATH configuration for user and system binaries
+- Node.js with NPM, installed via [nvm](https://github.com/nvm-sh/nvm)
+- nvm
+- npm
+- Yarn
+- OrbStack
+- iTerm2
 
-### Auto-update
-- **Easy-update**: Gives user a single command to update dotfiles
-- **Update Notifications**: Notifies user of available updates with details on commits and changes
-- **Cached results**: Only checks once every 12 hours to improve terminal startup time
+### Local Git configuration
 
-For more information, see the [documentation](docs/index.md).
+Dotfiles uses a Git configuration split between a local file and a global file. The local file is for user and machine specific settings, while the global file contains shared settings.
 
-Testing update
+Dotfiles assumes you'll sign commits with SSH keys. This is a secure way to verify the authenticity of your commits.
+
+<Note>
+If you don't have an SSH key, see the [GitHub documentation](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification#gpg-commit-signature-verification) to generate a new SSH key and adding it to your SSH agent.
+</Note>
+
+Create `~/.gitconfig.local` with your user information. This file is used for user-specific settings that should not be shared across machines. All other Git options are found in the main Dotfiles Git config, `~/.config/dotfiles/git/.gitconfig`.
+
+```bash
+[user]
+      name = Your Name
+      email = you@example.com
+      signingkey = ssh-ed25519 AAAAC3...
+```
+
+Next, create `~/.ssh/allowed_signers` with your SSH public key to sign commits.
+
+```bash
+you@example.com ssh-ed25519 AAAAC3...
+```
+
+### Set up 1Password SSH integration
+
+1Password manages your SSH keys and provides an SSH agent, allowing you to use your SSH keys securely without needing to store them in plaintext on your machine. To set up 1Password for SSH key management:
+
+1. Enable the SSH agent in 1Password (Settings → Developer → SSH Agent)
+1. Configure SSH to use 1Password by adding to `~/.ssh/config`:
+
+```bash
+Host *
+    IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+```
+
+### Install a Nerd font
+
+Install a Nerd font to enable icons in your terminal and VS Code. Nerd fonts are patched fonts that include additional glyphs and icons, making them suitable for use with PowerLevel10k and other terminal themes. Fira Code is a popular choice, but you can choose any nerd font you prefer. You can install Fira Code with Homebrew, or [download a different one manually](https://www.nerdfonts.com).
+
+```bash
+$ brew install --cask font-fira-code-nerd-font
+```
+
+Next, [configure iTerm](https://iterm2.com/documentation-fonts.html) to use the Nerd font, and [configure VS Code](https://code.visualstudio.com/docs/terminal/appearance).
+
+### Install Dotfiles
+
+To install Dotfiles, you'll back up your existing dotfiles, clone the Dotfiles repository, and set up the configuration files. This process will ensure that your environment is ready to use the Dotfiles setup.
+
+#### Backup existing files
+
+Before installing Dotfiles, it's a good idea to back up your existing dotfiles. The following commands create a backup directory and move your existing dotfiles into it.
+
+Make a backup directory.
+
+```bash
+$ mkdir -p ~/dotfiles_backup
+```
+
+Back up existing dotfiles.
+
+```bash
+$ find ~ -maxdepth 1 '(' \
+    -name ".gitconfig" -o \
+    -name ".zshrc" -o \
+    -name ".zshenv" -o \
+    -name ".zprofile" -o \
+    -name ".zlogin" -o \
+    -name ".zlogout" -o \
+    -name ".zsh_sessions" -o \
+    -name ".zsh_history" -o \
+    -name ".zsh_history.*" -o \
+    -name ".zcompdump*" \
+    ')' -exec mv {} ~/dotfiles_backup/ \;
+```
+
+#### Clone the Dotfiles repository
+
+Clone the dotfiles repository into your `~/.config/dotfiles` directory.
+
+```bash
+$ git clone https://github.com/dfinster/dotfiles ~/.config/dotfiles
+```
+
+#### Create Dotfiles hook
+
+To hook Dotfiles into your Zsh configuration, create a `.zshenv` file in your home directory that sources the main configuration file. This loads Dotfiles every time you start a new Zsh session.
+
+```bash
+$ echo "source ~/.config/dotfiles/zsh/.zshenv" > ~/.zshenv
+```
+
+#### Activate Dotfiles
+
+Restart your terminal to activate the new configuration. If everything is set up correctly, you should see the PowerLevel10k prompt and have access to all the tools installed by Dotfiles.
+
+### Optional: Configure PowerLevel10k
+
+PowerLevel10k is a theme for Zsh that provides a beautiful and informative prompt. If you don't like the configuration generated by Dotfiles, you can customize it.
+
+```bash
+$ p10k configure
+```
+
+## Maintenance
+
+Run `dotfiles help` and follow the prompts.
+
+## Troubleshooting
+
+Before troubleshooting anything, **restart your terminal**. 
+
+Then: 
+
+- If you encounter issues with Homebrew permissions, run `sudo chown -R $(whoami) /usr/local/var/homebrew`
+- For 1Password SSH integration issues, ensure 1Password is running and SSH agent is enabled in preferences
